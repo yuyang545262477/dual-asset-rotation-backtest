@@ -12,3 +12,5 @@ header .brand,main.shell,footer.shell{width:calc(100% - 36px);max-width:1800px}.
 .instrument-tabs .asset-legend button{background:#fff;border:1px solid var(--asset-color);color:var(--asset-color);font-variant-numeric:tabular-nums;white-space:nowrap}
 .instrument-tabs .asset-legend button[aria-pressed=false]{border-style:dashed}
 .instrument-tabs .asset-legend button[aria-pressed=true]{background:color-mix(in srgb,var(--asset-color) 9%,white)}
+
+.projection{margin-top:20px}.projection td{white-space:nowrap}
