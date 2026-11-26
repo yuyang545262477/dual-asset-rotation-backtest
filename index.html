@@ -1,10 +1,11 @@
-<!DOCTYPE html><html lang="zh-Hans"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="双资产历史轮动策略模拟。"><title>双资产轮动回测</title><link rel="stylesheet" href="style-adjusted.css"><script src="vendor/lightweight-charts.js" defer></script><script src="candles.js" defer></script><script src="prices.js" defer></script><script src="pair-588170-515880.js" defer></script><script src="app-adjusted.js" defer></script></head>
+<!DOCTYPE html><html lang="zh-Hans"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="双资产历史轮动策略模拟。"><title>双资产轮动回测</title><link rel="stylesheet" href="style-hold-gap.css"><script src="vendor/lightweight-charts.js" defer></script><script src="candles.js" defer></script><script src="prices.js" defer></script><script src="pair-588170-515880.js" defer></script><script src="app-hold-gap.js" defer></script></head>
 <body><header><div class="shell brand"><span class="logo" aria-hidden="true">⇄</span><div class="brand-copy"><h1>双资产轮动回测</h1><p class="period" id="period">800 个交易日 · 历史模拟</p></div><nav class="panel-nav" aria-label="展开信息面板"><button data-panel="settings">参数</button><button data-panel="results">收益</button><button data-panel="history">记录</button><button data-panel="method">规则</button></nav></div></header>
 <main class="shell">
 
 <section class="panel terminal" id="terminal" aria-label="TradingView 图表">
  <div class="terminal-bar"><div class="instrument-tabs" role="group" aria-label="选择图表">
-  <button type="button" data-view="net" aria-pressed="true" title="策略总资产相对初始本金的累计收益">策略净值<span id="strategy-return"></span></button>
+  <button type="button" id="strategy-toggle" data-view="net" aria-pressed="true" title="策略总资产相对初始本金的累计收益">策略净值<span id="strategy-return"></span></button>
+  <button type="button" id="hold-gap-toggle" aria-pressed="false" aria-controls="chart" title="策略总资产相对持有总资产的差异；1.000 对应 0%">比持有<span id="hold-gap-return" hidden></span></button>
   <details class="stock-views" id="stock-views" hidden>
    <summary id="stock-views-label">个股 K 线</summary>
    <div class="stock-options" role="group" aria-label="个股 K 线">
