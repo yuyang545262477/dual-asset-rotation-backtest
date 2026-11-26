@@ -8,17 +8,6 @@ const dailyMoves=rows.map(([,a,b],i)=>{
 const D=dailyMoves.map(m=>m?.diff??0);
 const fmt=(x,d=2)=>(x>0?"+":x<0?"−":"")+Math.abs(x).toFixed(d);
 const pct=x=>fmt(x*100)+"%";
-const projectionYears=[5,10,15,20,30];
-function compound(rate,years,principal){
- const multiplier=(1+rate)**years;
- return {gain:multiplier-1,amount:principal*multiplier};
-}
-function compactMoney(amount){
- const unit=amount>=1e8?[1e8,"亿"]:amount>=1e4?[1e4,"万"]:[1,""];
- const digits={minimumFractionDigits:2,maximumFractionDigits:2};
- return "¥"+(amount/unit[0]).toLocaleString("zh-CN",digits)+unit[1];
-}
-
 function simulate(t, full=false){
  const q=[.5/rows[0][1],.5/rows[0][2]],init=q.slice(),n=[4,4],block=[0,0], log=[],frames=[],year=[];
  let tr=0,signals=0,value=1,hold=1,peak=1,dd=0,prevYearV=1,prevYearH=1;
@@ -369,17 +358,9 @@ if(typeof document!=="undefined"){
   set("gap",mode!=="ideal"?money(current.benchNav):"策略相差 "+fmt((v-hold)*100)+" 个百分点");
   set("trades",tr+" 次");set("signals","超过阈值 "+signals+" 天");
   set("blocked",block[0]+block[1]+" 次");set("split","ETF "+block[0]+" 次 / 长江电力 "+block[1]+" 次");
-  const averageYear=column=>year.length?year.reduce((sum,y)=>sum+y[column],0)/year.length:null;
-  const averages=[averageYear(1),averageYear(2)];
-  set("annual-avg-strategy",averages[0]===null?"—":pct(averages[0]));
-  set("annual-avg-hold",averages[1]===null?"—":pct(averages[1]));
-  const principal=capitalByMode[mode]??1;
-  set("projection-capital",mode==="ideal"?"本金 1":compactMoney(principal));
-  $("projections").innerHTML=projectionYears.map(n=>'<tr><td>'+n+' 年</td>'+averages.map(rate=>{
-   if(rate===null)return "<td>—</td>";
-   const {gain,amount}=compound(rate,n,principal);
-   return "<td>"+pct(gain)+" ("+(mode==="ideal"?"本金 ×"+amount.toFixed(2):compactMoney(amount))+")</td>";
-  }).join("")+"</tr>").join("");
+  const averageYear=column=>year.length?pct(year.reduce((sum,y)=>sum+y[column],0)/year.length):"—";
+  set("annual-avg-strategy",averageYear(1));
+  set("annual-avg-hold",averageYear(2));
   $("years").innerHTML=year.map(([y,a,b])=>'<tr><td>'+y+'</td><td>'+pct(a)+'</td><td>'+pct(b)+'</td></tr>').join("");
   $("log").innerHTML=log.slice(-12).reverse().map(({date,dv,x,bottom,n,skipped,sold,bought,sellPrice,buyPrice})=>'<tr><td>'+date+'</td><td>'+fmt(dv*100,4)+'</td><td'+(bottom?' class="warn"':'')+'>'+(bottom?(x===0?"A":"B")+" 只剩底仓":skipped?"不足一手":(x===0?"A 转 B":"B 转 A")+(sold?" · 卖 "+sold+" @ "+sellPrice+"，买 "+bought+" @ "+buyPrice:""))+'</td><td>'+n+'</td></tr>').join("")||'<tr><td colspan="4">该阈值没有触发记录。</td></tr>';
   document.querySelectorAll("[data-threshold]").forEach(el=>{const selected=+el.dataset.threshold===t;el.classList.toggle("active",selected);el.setAttribute("aria-pressed",selected);});
@@ -433,4 +414,4 @@ if(typeof document!=="undefined"){
  setMode("account");
  setView("net");
 }
-if(typeof module!=="undefined")module.exports={simulate,simulateAccount,rank,rows,dailyMoves,accountMoves,compound,compactMoney};
+if(typeof module!=="undefined")module.exports={simulate,simulateAccount,rank,rows,dailyMoves,accountMoves};
