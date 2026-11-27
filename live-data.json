@@ -36,6 +36,17 @@
   },
   "trades": [
     {
+      "date": "2026-11-27 13:46:23",
+      "code": "600900",
+      "name": "长江电力",
+      "side": "买入",
+      "quantity": 100,
+      "price": 31.4,
+      "amount": 3140,
+      "fee": 5.03,
+      "feeStatus": "估算"
+    },
+    {
       "date": "2026-11-27 13:46:03",
       "code": "588170",
       "name": "科创半导体ETF华夏",
@@ -43,7 +54,8 @@
       "quantity": 5000,
       "price": 0.739,
       "amount": 3695,
-      "fee": null
+      "fee": 5,
+      "feeStatus": "估算"
     },
     {
       "date": "2026-11-25 14:22:39",
@@ -53,7 +65,8 @@
       "quantity": 4900,
       "price": 0.644,
       "amount": 3155.6,
-      "fee": 5
+      "fee": 5,
+      "feeStatus": "已对账"
     },
     {
       "date": "2026-11-25",
@@ -63,7 +76,8 @@
       "quantity": 100,
       "price": 31.79,
       "amount": 3179,
-      "fee": 6.62
+      "fee": 6.62,
+      "feeStatus": "已对账"
     }
   ]
 }
