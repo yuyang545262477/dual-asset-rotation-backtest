@@ -613,6 +613,10 @@ if(typeof document!=="undefined"){
  function changePair(){
   const threshold=current?activeThreshold:undefined;
   if(!selectMarket(choiceA.value,choiceB.value))return;
+  set("stock-view-a",market.codes[0]+" "+market.names[0]);
+  set("stock-view-b",market.codes[1]+" "+market.names[1]);
+  set("history-pair","A = "+market.codes[0]+" · B = "+market.codes[1]);
+  stockLabel.textContent="个股 K 线";
   for(const [target,other] of [[choiceA,choiceB],[choiceB,choiceA]]){
    const selected=target.value;
    const options=["159509","600900","588170","515880"].filter(code=>code!==other.value).map(code=>{
