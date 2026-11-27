@@ -46,7 +46,7 @@ function selectMarket(a,b){
  });
  return true;
 }
-selectMarket("159509","600900");
+selectMarket("588170","600900");
 const fmt=(x,d=2)=>(x>0?"+":x<0?"−":"")+Math.abs(x).toFixed(d);
 const pct=x=>fmt(x*100)+"%";
 const projectionYears=[5,10,15,20,30];
