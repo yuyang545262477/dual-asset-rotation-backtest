@@ -1,0 +1,69 @@
+{
+  "snapshot": {
+    "date": "2026-11-27",
+    "totals": [
+      18584.83,
+      17996.2,
+      588.63,
+      43.66,
+      1082.49,
+      2486.77
+    ],
+    "positions": [
+      {
+        "code": "588170",
+        "name": "科创半导体ETF华夏",
+        "quantity": 15900,
+        "available": 15900,
+        "price": 0.738,
+        "cost": 0.6813,
+        "value": 11734.2,
+        "profit": 902.2,
+        "returnPct": 8.33
+      },
+      {
+        "code": "600900",
+        "name": "长江电力",
+        "quantity": 200,
+        "available": 100,
+        "price": 31.31,
+        "cost": 30.4086,
+        "value": 6262,
+        "profit": 180.29,
+        "returnPct": 2.96
+      }
+    ]
+  },
+  "trades": [
+    {
+      "date": "2026-11-27 13:46:03",
+      "code": "588170",
+      "name": "科创半导体ETF华夏",
+      "side": "卖出",
+      "quantity": 5000,
+      "price": 0.739,
+      "amount": 3695,
+      "fee": null
+    },
+    {
+      "date": "2026-11-25 14:22:39",
+      "code": "588170",
+      "name": "科创半导体ETF华夏",
+      "side": "买入",
+      "quantity": 4900,
+      "price": 0.644,
+      "amount": 3155.6,
+      "fee": 5
+    },
+    {
+      "date": "2026-11-25",
+      "code": "600900",
+      "name": "长江电力",
+      "side": "卖出",
+      "quantity": 100,
+      "price": 31.79,
+      "amount": 3179,
+      "fee": 6.62
+    }
+  ]
+}
