@@ -10,21 +10,23 @@ function collectSnapshots(snapshot,history=[]){
  return [...byDate.values()].sort((a,b)=>a.date.localeCompare(b.date));
 }
 function renderChart(days){
- const TV=globalThis.LightweightCharts;
+ const TV=globalThis.LightweightCharts, theme=globalThis.dualChartTheme;
  if(!TV||!days.length)return;
  const by=id=>document.getElementById(id), panel=by("live-terminal"), host=by("live-chart"), full=by("live-full");
  panel.hidden=false;
+ const palette=theme.palette();
  const chart=TV.createChart(host,{
   autoSize:true,
-  layout:{background:{type:TV.ColorType.Solid,color:"#ffffff"},textColor:"#39516b",fontSize:13,attributionLogo:false},
-  grid:{vertLines:{color:"#edf2f8"},horzLines:{color:"#edf2f8"}},
+  layout:{background:{type:TV.ColorType.Solid,color:palette.background},textColor:palette.text,fontSize:13,attributionLogo:false},
+  grid:{vertLines:{color:palette.grid},horzLines:{color:palette.grid}},
   crosshair:{mode:TV.CrosshairMode.Normal},
-  rightPriceScale:{borderColor:"#dce5ef",scaleMargins:{top:.12,bottom:.12}},
-  timeScale:{borderColor:"#dce5ef",timeVisible:false},
+  rightPriceScale:{borderColor:palette.border,scaleMargins:{top:.12,bottom:.12}},
+  timeScale:{borderColor:palette.border,timeVisible:false},
   localization:{locale:"zh-CN",dateFormat:"yyyy-MM-dd"}
  });
- const curve=chart.addSeries(TV.LineSeries,{color:"#1555bd",lineWidth:2,priceFormat:{type:"custom",minMove:.01,formatter:money},priceLineVisible:false,pointMarkersVisible:days.length===1,pointMarkersRadius:5});
+ const curve=chart.addSeries(TV.LineSeries,{color:palette.net,lineWidth:2,priceFormat:{type:"custom",minMove:.01,formatter:money},priceLineVisible:false,pointMarkersVisible:days.length===1,pointMarkersRadius:5});
  curve.setData(days.map(d=>({time:d.date,value:d.totals[0]})));
+ theme.watch(p=>{theme.apply(chart,TV,p);curve.applyOptions({color:p.net});});
  if(days.length===1)chart.timeScale().setVisibleLogicalRange({from:-5,to:5});
  else chart.timeScale().fitContent();
  const positionText=(p,label)=>p?label+"｜"+p.name+"："+decimal(p.quantity,0)+(p.code==="600900"?" 股":" 份")+" · 快照价 ¥"+decimal(p.price,p.code==="600900"?2:3)+" · 市值 "+money(p.value):label+"｜暂无持仓快照";

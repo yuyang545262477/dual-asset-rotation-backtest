@@ -26,3 +26,26 @@ header .brand,main.shell,footer.shell{width:calc(100% - 36px);max-width:1800px}.
 .instrument-tabs #hold-gap-toggle[aria-pressed=true]{border-style:solid;background:#e5f6f2}
 
 .pair-settings{display:flex;flex-wrap:wrap;gap:.6rem 1rem;margin-bottom:16px}.pair-settings label{display:flex;align-items:center;gap:.4rem;font-size:.875rem;min-width:0}.pair-settings select{font:inherit;min-width:0;max-width:100%;padding:5px 7px;background:#f7faff;color:var(--ink);border:1px solid var(--line);border-radius:8px}
+
+/* Follow the operating system without changing the light palette. */
+@media (prefers-color-scheme: dark){
+ :root{color-scheme:dark;--bg:#101722;--surface:#182332;--surface-raised:#1f2d40;--ink:#edf3fa;--muted:#b4c3d6;--line:#344257;--blue:#8ab8ff;--soft:#233d60;--orange:#ffc28d;--focus:#9ac2ff}
+ header,.panel,.terminal,.terminal:fullscreen,.terminal.full-fallback,.keyboard-card,.stock-options{background:var(--surface)}
+ .terminal-bar,.graph,th,.scope,.keyboard-card kbd{background:var(--surface-raised)}
+ .scope,.eyebrow,.terminal .readout{color:var(--ink)}
+ button,.panel-nav button,.terminal-tools summary,.stock-views summary,.pair-settings select,#asset-pair,.input input{background:var(--surface-raised);color:var(--ink);border-color:var(--line)}
+ button:hover,button.active,.panel-nav button[aria-expanded=true],.instrument-tabs button[aria-pressed=true],.periods button[aria-pressed=true]{background:var(--soft);color:var(--ink);border-color:#7296c4}
+ .terminal-tools summary:focus-visible,.stock-views summary:focus-visible,.tv-frame:focus-visible,button:focus-visible,input:focus-visible,a:focus-visible,select:focus-visible{outline-color:var(--focus)}
+ .daily-readout strong[data-sign=up],.account-readout strong[data-sign=up]{color:#ff8999}
+ .daily-readout strong[data-sign=down],.account-readout strong[data-sign=down]{color:#63ddad}
+ .daily-readout .daily-status{background:#3e2b53;color:#e5c5ff}
+ .daily-status[data-kind=blocked]{background:#4b311f;color:#ffd09f}
+ .daily-status[data-kind=trade],.model-switch button[aria-pressed=true]{background:#194338;color:#a0f3ce;border-color:#4e9c86}
+ .model-switch #threshold-current{color:var(--muted)}
+ .instrument-tabs .asset-legend button,.instrument-tabs #hold-gap-toggle[aria-pressed=false]{background:var(--surface)}
+ .instrument-tabs .asset-legend button[aria-pressed=true]{background:color-mix(in srgb,var(--asset-color) 14%,var(--surface))}
+ .instrument-tabs #hold-gap-toggle{color:#79e0cb;border-color:#4da38f}
+ .instrument-tabs #hold-gap-toggle[aria-pressed=true]{background:#194338}
+ .workspace-tabs a[aria-current="page"]{background:#194338;color:#a0f3ce;border-color:#4e9c86}
+ .asset-tip{background:#e6edf6;color:#172333}
+}

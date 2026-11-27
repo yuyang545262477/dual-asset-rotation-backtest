@@ -249,12 +249,13 @@ if(typeof document!=="undefined"){
 
  let current, view="net", range="all", mainSeries, holdSeries, gapSeries, gapVisible=false, cursorIndex=null, keyboardCursor=false, eventByDate=new Map(), activeThreshold=0;
  const host=$("chart"), terminal=$("terminal"), full=$("full");
- const TV=globalThis.LightweightCharts;
+ const TV=globalThis.LightweightCharts, theme=globalThis.dualChartTheme;
+ let palette=theme.palette();
  let ohlc,byDate,index;
  // Individual adjusted returns stay on the right net-value axis.
  const assets={
-  a:{color:"#ad4d13",points:rows.map(([time,a])=>({time,value:a/rows[0][1]})),visible:false,series:null},
-  b:{color:"#7650a6",points:rows.map(([time,,b])=>({time,value:b/rows[0][2]})),visible:false,series:null}
+  a:{color:palette.a,points:rows.map(([time,a])=>({time,value:a/rows[0][1]})),visible:false,series:null},
+  b:{color:palette.b,points:rows.map(([time,,b])=>({time,value:b/rows[0][2]})),visible:false,series:null}
  };
  const assetButtons=[...document.querySelectorAll("[data-asset-return]")];
  for(const button of assetButtons){
@@ -272,15 +273,15 @@ if(typeof document!=="undefined"){
  }
  const chart=TV?.createChart(host,{
   autoSize:true,
-  layout:{background:{type:TV.ColorType.Solid,color:"#ffffff"},textColor:"#39516b",fontSize:13,attributionLogo:false},
-  grid:{vertLines:{color:"#edf2f8"},horzLines:{color:"#edf2f8"}},
+  layout:{background:{type:TV.ColorType.Solid,color:palette.background},textColor:palette.text,fontSize:13,attributionLogo:false},
+  grid:{vertLines:{color:palette.grid},horzLines:{color:palette.grid}},
   crosshair:{mode:TV.CrosshairMode.Normal},
-  leftPriceScale:{visible:false,borderColor:"#dce5ef",textColor:"#09665b",scaleMargins:{top:.1,bottom:.11}},
-  rightPriceScale:{borderColor:"#dce5ef",scaleMargins:{top:.1,bottom:.11}},
-  timeScale:{borderColor:"#dce5ef",rightOffset:3,timeVisible:false,fixLeftEdge:true},
+  leftPriceScale:{visible:false,borderColor:palette.border,textColor:palette.gapAxis,scaleMargins:{top:.1,bottom:.11}},
+  rightPriceScale:{borderColor:palette.border,scaleMargins:{top:.1,bottom:.11}},
+  timeScale:{borderColor:palette.border,rightOffset:3,timeVisible:false,fixLeftEdge:true},
   localization:{locale:"zh-CN",dateFormat:"yyyy-MM-dd"}
  });
- let netTradeMarkers,gapTradeMarkers;
+ let netTradeMarkers,gapTradeMarkers,gapZeroLine;
  const gapToggle=$("hold-gap-toggle"), strategyToggle=$("strategy-toggle"), gapLabel=$("hold-gap-return");
  function syncNetAxes(){
   const comparing=view==="net"&&gapVisible;
@@ -369,7 +370,7 @@ if(typeof document!=="undefined"){
  function renderTradeMarkers(){
   if(!netTradeMarkers||!gapTradeMarkers)return;
   const points=activeThreshold>1?current.log.filter(e=>!e.bottom&&!e.skipped).map(e=>({
-   time:e.date,position:"aboveBar",shape:"circle",color:e.x===0?"#d00068":"#698500",size:0.8
+   time:e.date,position:"aboveBar",shape:"circle",color:e.x===0?palette.buyB:palette.buyA,size:0.8
   })):[];
   netTradeMarkers.setMarkers(gapVisible?[]:points);
   gapTradeMarkers.setMarkers(gapVisible?points:[]);
@@ -383,6 +384,7 @@ if(typeof document!=="undefined"){
   setNetSummary();
   showData(cursorIndex===null?undefined:rows[cursorIndex][0]);
  }
+ const candleColors=()=>({upColor:palette.up,downColor:palette.down,wickUpColor:palette.up,wickDownColor:palette.down,borderVisible:false});
  function setView(next){
   view=next;cursorIndex=null;keyboardCursor=false;
   if(!chart){set("readout","图表组件无法加载，收益和换仓记录仍可查看。");return;}
@@ -390,16 +392,16 @@ if(typeof document!=="undefined"){
   netTradeMarkers=gapTradeMarkers=null;
   if(mainSeries)chart.removeSeries(mainSeries);
   if(holdSeries){chart.removeSeries(holdSeries);holdSeries=null;}
-  if(gapSeries){chart.removeSeries(gapSeries);gapSeries=null;}
+  if(gapSeries){chart.removeSeries(gapSeries);gapSeries=null;gapZeroLine=null;}
   for(const asset of Object.values(assets)){
    if(asset.series){chart.removeSeries(asset.series);asset.series=null;}
   }
   $("asset-legend").hidden=view!=="net";
   gapToggle.hidden=view!=="net";
   if(view==="net"){
-   mainSeries=chart.addSeries(TV.LineSeries,{color:"#1555bd",lineWidth:2,visible:!gapVisible,priceFormat:{type:"price",precision:3,minMove:.001}});
-   holdSeries=chart.addSeries(TV.LineSeries,{color:"#718198",lineWidth:2,visible:!gapVisible,lineStyle:TV.LineStyle.Dashed,priceLineVisible:false,priceFormat:{type:"price",precision:3,minMove:.001}});
-   gapSeries=chart.addSeries(TV.LineSeries,{color:"#008375",lineWidth:2,visible:gapVisible,priceScaleId:"left",
+   mainSeries=chart.addSeries(TV.LineSeries,{color:palette.net,lineWidth:2,visible:!gapVisible,priceFormat:{type:"price",precision:3,minMove:.001}});
+   holdSeries=chart.addSeries(TV.LineSeries,{color:palette.hold,lineWidth:2,visible:!gapVisible,lineStyle:TV.LineStyle.Dashed,priceLineVisible:false,priceFormat:{type:"price",precision:3,minMove:.001}});
+   gapSeries=chart.addSeries(TV.LineSeries,{color:palette.gap,lineWidth:2,visible:gapVisible,priceScaleId:"left",
     lastValueVisible:false,priceLineVisible:false,priceFormat:{type:"custom",minMove:.0001,formatter:pct},
     autoscaleInfoProvider:base=>{
      const info=base();
@@ -412,7 +414,7 @@ if(typeof document!=="undefined"){
     netTradeMarkers=TV.createSeriesMarkers(mainSeries,[],{autoScale:false});
     gapTradeMarkers=TV.createSeriesMarkers(gapSeries,[],{autoScale:false});
    }
-   gapSeries.createPriceLine({price:0,color:"#66827e",lineWidth:1,lineStyle:TV.LineStyle.Dashed,axisLabelVisible:false,title:""});
+   gapZeroLine=gapSeries.createPriceLine({price:0,color:palette.zero,lineWidth:1,lineStyle:TV.LineStyle.Dashed,axisLabelVisible:false,title:""});
    for(const asset of Object.values(assets)){
     asset.series=chart.addSeries(TV.LineSeries,{
      color:asset.color,lineWidth:2,visible:asset.visible,
@@ -422,7 +424,7 @@ if(typeof document!=="undefined"){
    }
    updateNet();
   }else{
-   const colors={upColor:"#c53c46",downColor:"#148067",wickUpColor:"#c53c46",wickDownColor:"#148067",borderVisible:false};
+   const colors=candleColors();
    const d=tick[view==="a"?0:1]===1?3:2;
    mainSeries=chart.addSeries(TV.CandlestickSeries,{...colors,priceFormat:{type:"price",precision:d,minMove:10**(-d)}});
    mainSeries.setData(ohlc[view]);
@@ -652,5 +654,21 @@ if(typeof document!=="undefined"){
  choiceA.addEventListener("change",changePair);
  choiceB.addEventListener("change",changePair);
  changePair();
+ theme.watch(p=>{
+  palette=p;
+  if(chart)theme.apply(chart,TV,p);
+  if(view==="net")mainSeries?.applyOptions({color:p.net});
+  else mainSeries?.applyOptions(candleColors());
+  holdSeries?.applyOptions({color:p.hold});
+  gapSeries?.applyOptions({color:p.gap});
+  gapZeroLine?.applyOptions({color:p.zero});
+  for(const button of assetButtons){
+   const key=button.dataset.assetReturn;
+   assets[key].color=p[key];
+   assets[key].series?.applyOptions({color:p[key]});
+   button.style.setProperty("--asset-color",p[key]);
+  }
+  renderTradeMarkers();
+ });
 }
 if(typeof module!=="undefined")module.exports={accountAllocation,planAccountSwap,tradeFee,affordable,simulate,simulateAccount,rank,rows,dailyMoves,accountMoves,compound,compactMoney,relativeHold,selectMarket,get marketState(){return {rows,accountMoves};}};
