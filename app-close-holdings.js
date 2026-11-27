@@ -369,7 +369,7 @@ if(typeof document!=="undefined"){
  function renderTradeMarkers(){
   if(!netTradeMarkers||!gapTradeMarkers)return;
   const points=activeThreshold>1?current.log.filter(e=>!e.bottom&&!e.skipped).map(e=>({
-   time:e.date,position:"aboveBar",shape:"circle",color:e.x===0?"#1555bd":"#c45100",size:0.8
+   time:e.date,position:"aboveBar",shape:"circle",color:e.x===0?"#d00068":"#698500",size:0.8
   })):[];
   netTradeMarkers.setMarkers(gapVisible?[]:points);
   gapTradeMarkers.setMarkers(gapVisible?points:[]);
