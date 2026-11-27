@@ -147,48 +147,33 @@ function accountAllocation(holdings,prices,cash,previous=null,previousAnchor=nul
  portions[other]=capacity-portions[anchor];
  if(portions.some(q=>q<1))return {anchor,capacity,portions:null,reason:"底仓拦截"};
  if(portions.some((q,i)=>q>lots[i]))return {anchor,capacity,portions:null,reason:"不足整手"};
- const anchorQuantity=lotSize*Math.floor(nav/(capacity*lotValues[anchor]));
- return {anchor,capacity,portions,anchorQuantity,reason:null};
+ return {anchor,capacity,portions,reason:null};
 }
 
-// 一份的锚侧数量按当日总资产计算，买卖共用。非锚侧按成交资金配整手。
-function planAccountSwap({holdings,portions,cash,seller,anchor,anchorQuantity,bid,ask,kinds,sellable=holdings[seller]}){
+// 常规预算先由卖出所得覆盖；如果这一份卖到上限仍不够一手，现金才补差。
+function planAccountSwap({holdings,portions,cash,seller,bid,ask,kinds,sellable=holdings[seller]}){
  const buyer=1-seller;
  if(portions[seller]<=1)return {reason:"底仓拦截"};
- if(anchorQuantity<lotSize)return {reason:"不足整手"};
- // 卖方转出一份后，剩下每份至少留一手。
- const reserve=lotSize*(portions[seller]-1);
- const saleLimit=lotSize*Math.floor(Math.min(holdings[seller]-reserve,sellable)/lotSize);
+ const saleLimit=lotSize*Math.floor(Math.min(holdings[seller]/portions[seller],sellable)/lotSize);
  if(saleLimit<lotSize)return {reason:"不足整手"};
  const net=quantity=>quantity*bid[seller]-tradeFee(quantity*bid[seller],kinds[seller],"sell");
  const buyTotal=quantity=>quantity*ask[buyer]+tradeFee(quantity*ask[buyer],kinds[buyer],"buy");
- let sold,bought;
- if(seller===anchor){
-  if(holdings[seller]-anchorQuantity<reserve)return {reason:"底仓拦截"};
-  if(anchorQuantity>saleLimit)return {reason:"不足整手"};
-  sold=anchorQuantity;
-  const proceeds=net(sold);
-  bought=affordable(proceeds,ask[buyer],kinds[buyer]);
-  if(bought<lotSize){
-   if(proceeds+cash<buyTotal(lotSize))return {reason:"卖出金额不足"};
-   bought=lotSize;
+ const netLimit=net(saleLimit);
+ const buyBySale=affordable(netLimit,ask[buyer],kinds[buyer]);
+ let sold=saleLimit,bought=buyBySale;
+ if(buyBySale>=lotSize){
+  // 先按这一份最多能买到的整手计算，再只卖够这些手数。
+  const target=buyTotal(buyBySale);
+  let low=1,high=saleLimit/lotSize;
+  while(low<high){
+   const mid=Math.floor((low+high)/2);
+   if(net(mid*lotSize)>=target)high=mid;
+   else low=mid+1;
   }
+  sold=low*lotSize;
  }else{
-  bought=anchorQuantity;
-  const target=buyTotal(bought), maxNet=net(saleLimit);
-  if(maxNet<target){
-   if(maxNet+cash<target)return {reason:"卖出金额不足"};
-   sold=saleLimit;
-  }else{
-   // 只卖够锚侧目标手数，原有现金留作补差。
-   let low=1,high=saleLimit/lotSize;
-   while(low<high){
-    const mid=Math.floor((low+high)/2);
-    if(net(mid*lotSize)>=target)high=mid;
-    else low=mid+1;
-   }
-   sold=lotSize*low;
-  }
+  if(netLimit+cash<buyTotal(lotSize))return {reason:"卖出金额不足"};
+  bought=lotSize;
  }
  const gross=sold*bid[seller],cost=bought*ask[buyer];
  const sellFee=tradeFee(gross,kinds[seller],"sell"),buyFee=tradeFee(cost,kinds[buyer],"buy");
@@ -219,7 +204,7 @@ function simulateAccount(threshold, trade=true, capital=capitalByMode.account){
    if(trade&&x>=0){
     signals++;
     const y=1-x,e={date,dv:m.spread[x],x,n:units?.join(":")??"—"};
-    const plan=allocation.reason?{reason:allocation.reason}:planAccountSwap({holdings:q,portions:units,cash,seller:x,anchor:allocation.anchor,anchorQuantity:allocation.anchorQuantity,bid,ask,kinds});
+    const plan=allocation.reason?{reason:allocation.reason}:planAccountSwap({holdings:q,portions:units,cash,seller:x,bid,ask,kinds});
     if(plan.reason){
      e.bottom=plan.reason==="底仓拦截";e.skipped=true;e.reason=plan.reason;
      if(e.bottom)block[x]++;
