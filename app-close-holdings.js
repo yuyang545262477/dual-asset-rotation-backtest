@@ -234,7 +234,7 @@ if(typeof document!=="undefined"){
  const $=id=>document.getElementById(id), set=(id,v)=>{$(id).textContent=v;};
  let rankings={};
  const money=x=>"¥"+x.toLocaleString("zh-CN",{minimumFractionDigits:2,maximumFractionDigits:2});
- let mode="account";
+ let mode="account20";
  function renderAccountRanks(next){
   const benchmark=simulateAccount(0,false,capitalByMode[next]), tbody=$("account-comparisons");
   tbody.innerHTML=rankings[next].map(r=>'<tr><td><button class="threshold-button" type="button" data-threshold="'+r.threshold+'">'+r.threshold+'%</button></td><td>'+money(r.nav)+'</td><td>'+pct(r.value-1)+'</td><td>'+r.tr+'</td><td>'+money(r.fees)+'</td></tr>').join("")+'<tr><td>各买一半不动</td><td>'+money(benchmark.nav)+'</td><td>'+pct(benchmark.value-1)+'</td><td>0</td><td>'+money(benchmark.fees)+'</td></tr>';
@@ -586,7 +586,7 @@ if(typeof document!=="undefined"){
   set("threshold-best","样本最高 "+best+"%");
   set("gap-label",account?"可成交价差":"价差");
   $("gap-label").title=account?"卖 A 买 B、卖 B 买 A 两种方向中，按买一和卖一算出的较大价差。":"A 的日收益率减去 B 的日收益率";
-  update(threshold??(account?0:Number(best)));
+  update(threshold??Number(best));
  }
  document.querySelectorAll("[data-mode]").forEach(el=>el.addEventListener("click",()=>setMode(el.dataset.mode)));
  document.querySelectorAll("[data-recompute]").forEach(button=>{
