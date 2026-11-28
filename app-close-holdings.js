@@ -356,8 +356,9 @@ if(typeof document!=="undefined"){
    if(mode!=="ideal"){
     const dailyReturn=i>0?Math.round((f.nav/current.frames[i-1].nav-1)*10000)/100:null;
     set("account-amounts",money(f.nav));
-    const tradeRow=$("account-day-trade"), swapped=event?.sold>0&&event?.bought>0&&!event.skipped;
-    tradeRow.hidden=!swapped;
+    const swapped=event?.sold>0&&event?.bought>0&&!event.skipped;
+    $("account-day-trade-content").hidden=!swapped;
+    $("account-day-trade-blank").hidden=swapped;
     if(swapped){
      const changes=seriesAssets.map(({kind},j)=>{
       const selling=j===event.x, quantity=selling?event.sold:event.bought;
