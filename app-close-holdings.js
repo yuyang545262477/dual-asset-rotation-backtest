@@ -294,7 +294,7 @@ if(typeof document!=="undefined"){
  }
 
 
- let current, view="net", range="all", mainSeries, holdSeries, gapSeries, gapVisible=false, cursorIndex=null, keyboardCursor=false, eventByDate=new Map(), activeThreshold=0;
+ let current, view="net", range="all", mainSeries, holdSeries, gapSeries, gapVisible=true, cursorIndex=null, keyboardCursor=false, eventByDate=new Map(), activeThreshold=0;
  const host=$("chart"), terminal=$("terminal"), full=$("full");
  const TV=globalThis.LightweightCharts, theme=globalThis.dualChartTheme;
  let palette=theme.palette();
@@ -369,8 +369,8 @@ if(typeof document!=="undefined"){
   borderUpColor:color,borderDownColor:color,wickUpColor:color,wickDownColor:color
  });
  const assets={
-  a:{color:palette.a,candles:[],visible:false,series:null},
-  b:{color:palette.b,candles:[],visible:false,series:null}
+  a:{color:palette.a,candles:[],visible:true,series:null},
+  b:{color:palette.b,candles:[],visible:true,series:null}
  };
  const assetButtons=[...document.querySelectorAll("[data-asset-return]")];
  for(const button of assetButtons){
