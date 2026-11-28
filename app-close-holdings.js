@@ -442,6 +442,8 @@ if(typeof document!=="undefined"){
  }
  function setRange(){
   if(!chart)return;
+  cancelPan();
+  if(panEdgeUnlocked){chart.timeScale().applyOptions({fixLeftEdge:true});panEdgeUnlocked=false;}
   if(range==="all")chart.timeScale().fitContent();
   else if(range==="start")chart.timeScale().setVisibleLogicalRange({from:0,to:Math.min(364,rows.length-1)});
   else{
@@ -474,6 +476,7 @@ if(typeof document!=="undefined"){
  }
  const candleColors=()=>({upColor:palette.up,downColor:palette.down,wickUpColor:palette.up,wickDownColor:palette.down,borderVisible:false});
  function setView(next){
+  cancelPan();crosshairY=null;
   view=next;cursorIndex=null;keyboardCursor=false;
   if(!chart){set("readout","图表组件无法加载，收益和换仓记录仍可查看。");return;}
   netTradeMarkers?.detach();gapTradeMarkers?.detach();
@@ -524,24 +527,30 @@ if(typeof document!=="undefined"){
   syncNetAxes();
   setRange();
  }
+ let crosshairY=null,panFrame=0,pendingPan=null,panEdgeUnlocked=false;
+ function cancelPan(){
+  if(panFrame)cancelAnimationFrame(panFrame);
+  panFrame=0;pendingPan=null;
+ }
  chart?.subscribeCrosshairMove(p=>{
   if(keyboardCursor)return;
   const time=typeof p.time==="string"?p.time:p.time?[p.time.year,String(p.time.month).padStart(2,"0"),String(p.time.day).padStart(2,"0")].join("-"):null;
   if(time&&index.has(time)){
    const nextIndex=index.get(time);
+   if(Number.isFinite(p.point?.y))crosshairY=p.point.y;
    if(cursorIndex!==nextIndex){cursorIndex=nextIndex;showData(time);}
   }
   else if(mainSeries&&!keyboardCursor&&cursorIndex===null){showData();}
  });
- host.addEventListener("pointermove",()=>{keyboardCursor=false;},{passive:true,capture:true});
- host.addEventListener("pointerdown",()=>{keyboardCursor=false;host.focus({preventScroll:true});});
+ host.addEventListener("pointermove",()=>{cancelPan();keyboardCursor=false;},{passive:true,capture:true});
+ host.addEventListener("pointerdown",()=>{cancelPan();keyboardCursor=false;host.focus({preventScroll:true});});
  let last=rows.length-1;
  const clampDay=i=>Math.max(0,Math.min(last,i));
  function spanRange(from,width){
   const t=chart.timeScale(), span=Math.max(8,Math.min(last,width)), start=Math.max(0,Math.min(last-span,from));
   t.setVisibleLogicalRange({from:start,to:start+span});
  }
- function selectDay(i,follow=true){
+ function selectDay(i,follow=true,fixedY=null){
   keyboardCursor=true;cursorIndex=clampDay(i);
   const t=chart.timeScale(), r=t.getVisibleLogicalRange();
   if(follow&&r&&(cursorIndex<Math.ceil(r.from)||cursorIndex>Math.floor(r.to))){
@@ -551,14 +560,44 @@ if(typeof document!=="undefined"){
   const date=rows[cursorIndex][0], f=current.frames[cursorIndex];
   const comparing=view==="net"&&gapVisible;
   const value=view==="net"?(comparing?relativeHold(f):f.value):byDate[view].get(date)?.close;
-  if(Number.isFinite(value))chart.setCrosshairPosition(value,date,comparing?gapSeries:mainSeries);
+  const series=comparing?gapSeries:mainSeries;
+  const cursorPrice=Number.isFinite(fixedY)?series.coordinateToPrice(fixedY):value;
+  if(Number.isFinite(cursorPrice)){
+   chart.setCrosshairPosition(cursorPrice,date,series);
+   crosshairY=fixedY??series.priceToCoordinate(cursorPrice);
+  }
   showData(date);
  }
  function clearCursor(){
+  cancelPan();crosshairY=null;
   cursorIndex=null;keyboardCursor=false;chart?.clearCrosshairPosition();showData();
  }
+ function panWithFixedCrosshair(step){
+  const scale=chart.timeScale(), r=scale.getVisibleLogicalRange();
+  if(!r)return;
+  const cursorVisible=cursorIndex!==null&&cursorIndex>=r.from-.5&&cursorIndex<=r.to+.5;
+  const origin=pendingPan?.index??(cursorVisible?cursorIndex:clampDay(Math.round((r.from+r.to)/2)));
+  const next=clampDay(origin+step);
+  if(next===origin)return;
+  const from=pendingPan?.from??r.from,to=pendingPan?.to??r.to;
+  const y=pendingPan?.y??(cursorVisible?crosshairY:null);
+  pendingPan={index:next,from:from+step,to:to+step,y};
+  keyboardCursor=true;
+  if(!panEdgeUnlocked){scale.applyOptions({fixLeftEdge:false});panEdgeUnlocked=true;}
+  // Shift the logical range and date by the same number of bars to preserve the x coordinate.
+  scale.setVisibleLogicalRange({from:pendingPan.from,to:pendingPan.to});
+  if(!panFrame)panFrame=requestAnimationFrame(()=>{
+   panFrame=0;
+   const target=pendingPan;pendingPan=null;
+   if(target)selectDay(target.index,false,target.y);
+  });
+ }
  function handleShortcut(e){
-  if(!chart||!mainSeries||e.defaultPrevented||e.isComposing||e.altKey||e.metaKey||e.ctrlKey)return;
+  if(!chart||!mainSeries||e.defaultPrevented||e.isComposing||e.metaKey||e.ctrlKey)return;
+  if(e.altKey){
+   if(e.shiftKey||!["ArrowLeft","ArrowRight"].includes(e.key))return;
+   e.preventDefault();panWithFixedCrosshair(e.key==="ArrowLeft"?-1:1);return;
+  }
   const r=chart.timeScale().getVisibleLogicalRange();if(!r)return;
   const w=r.to-r.from;
   const seed=cursorIndex!==null&&cursorIndex>=r.from&&cursorIndex<=r.to?cursorIndex:clampDay(Math.ceil(r.from));
@@ -583,7 +622,7 @@ if(typeof document!=="undefined"){
     fn=clearCursor;break;
    default:return;
   }
-  e.preventDefault();fn();
+  e.preventDefault();cancelPan();fn();
  }
  host.addEventListener("keydown",handleShortcut);
  document.addEventListener("keydown",e=>{
