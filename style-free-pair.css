@@ -84,5 +84,7 @@ header .brand,main.shell,footer.shell{width:calc(100% - 36px);max-width:1800px}.
 .terminal:has(#account-readout:not([hidden]) #next-trade-plan){--plan-space:72px}
 #next-trade-plan .account-readout{white-space:nowrap;overflow-x:auto;scrollbar-width:none}
 
-#next-trade-plan .plan-row{display:grid;grid-template-columns:4.25em 8.75em max-content;column-gap:.4em}
+#next-trade-plan .plan-row{display:grid;grid-template-columns:4.25em 13em max-content;column-gap:.4em}
 #next-trade-plan .plan-reason{grid-column:2/-1}
+
+#next-trade-plan .plan-price{color:var(--muted);font-size:.86em}

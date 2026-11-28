@@ -181,17 +181,28 @@ function planAccountSwap({holdings,portions,cash,seller,bid,ask,kinds,sellable=h
  return {sold,bought,sellFee,buyFee,cashUsed,cashAfter:cash+gross-sellFee-cost-buyFee};
 }
 
-function nextTradePlans(frame,priceTicks,kinds){
+// Quote scenarios use only the selected day's closes; never read next-session prices.
+function nextTradePlans(frame,priceTicks,kinds,threshold){
  const holdings=frame.closingPositions.map(p=>p.quantity);
- const prices=frame.closingPositions.map(p=>Math.round(p.price*1000));
- const cash=Math.round(frame.cash*1000),portions=frame.n?.split(":").map(Number);
- if(frame.portionStatus||portions?.length!==2||!portions.every(n=>Number.isInteger(n)&&n>0)){
-  const reason=frame.portionStatus??"底仓拦截";
-  return [{reason},{reason}];
- }
- const bid=prices.map((price,i)=>price-priceTicks[i]);
- const ask=prices.map((price,i)=>price+priceTicks[i]);
- return [0,1].map(seller=>bid[seller]<=0?{reason:"暂无有效报价"}:planAccountSwap({holdings,portions,cash,seller,bid,ask,kinds}));
+ const closes=frame.closingPositions.map(p=>Math.round(p.price*1000));
+ const cash=Math.round(frame.cash*1000),parsed=frame.n?.split(":").map(Number);
+ const previous=parsed?.length===2&&parsed.every(n=>Number.isInteger(n)&&n>0)?parsed:null;
+ return [0,1].map(seller=>{
+  const buyer=1-seller;
+  if(!closes.every(p=>p>0)||!priceTicks.every(p=>p>0)||!Number.isFinite(threshold))return {reason:"暂无有效报价"};
+  const quotes=closes.slice(),step=priceTicks[seller];
+  // Buy leg: unchanged reference price, plus one tick for its modeled ask.
+  const ask=closes.map((p,i)=>p+priceTicks[i]);
+  const required=closes[seller]*(ask[buyer]/closes[buyer]+threshold+1e-12);
+  let sellBid=(Math.floor(required/step)+1)*step;
+  if(!(sellBid/closes[seller]-ask[buyer]/closes[buyer]>threshold+1e-12))sellBid+=step;
+  // Sell leg uses bid; its reference price is one tick higher.
+  quotes[seller]=sellBid+step;
+  const bid=quotes.map((p,i)=>p-priceTicks[i]);
+  const allocation=accountAllocation(holdings,quotes,cash,previous,frame.anchor);
+  if(allocation.reason)return {reason:allocation.reason};
+  return {...planAccountSwap({holdings,portions:allocation.portions,cash,seller,bid,ask,kinds}),sellBid,buyAsk:ask[buyer]};
+ });
 }
 
 function simulateAccount(threshold, trade=true, capital=capitalByMode.account){
@@ -445,7 +456,7 @@ if(typeof document!=="undefined"){
     }
     set("account-close-cash","现金："+money(f.cash));
     const kindBySide=seriesAssets.map(asset=>asset.kind);
-    nextTradePlans(f,tick,kindBySide).forEach((plan,seller)=>{
+    nextTradePlans(f,tick,kindBySide,activeThreshold/100).forEach((plan,seller)=>{
      const reason=$("plan-"+seller+"-reason");
      reason.hidden=!plan.reason;
      reason.textContent=plan.reason?"不交易 · "+plan.reason:"";
@@ -457,6 +468,8 @@ if(typeof document!=="undefined"){
       set(id+"-qty",(selling?"−":"+")+qty.toLocaleString("zh-CN"));
       $(id+"-qty").dataset.sign=selling?"down":"up";
       set(id+"-unit",kindBySide[side]==="etf"?" 份":" 股");
+      const quote=(selling?plan.sellBid:plan.buyAsk)/1000;
+      set(id+"-price"," @ ¥"+quote.toFixed(tick[side]===1?3:2));
      }
     });
     set("account-daily-return",dailyReturn===null?"—":fmt(dailyReturn)+"%");
