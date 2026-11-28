@@ -214,7 +214,7 @@ function simulateAccount(threshold, trade=true, capital=capitalByMode.account){
      allocation=accountAllocation(q,p,cash,units,anchor);
      anchor=allocation.anchor;
      if(allocation.portions)units=allocation.portions;
-     Object.assign(e,{sold:plan.sold,bought:plan.bought,sellPrice:bid[x]/1000,buyPrice:ask[y]/1000,cashUsed:plan.cashUsed/1000,n:units.join(":")});
+     Object.assign(e,{sold:plan.sold,bought:plan.bought,sellPrice:bid[x]/1000,buyPrice:ask[y]/1000,cashUsed:plan.cashUsed/1000,sellAmount:plan.sold*bid[x]/1000,buyAmount:plan.bought*ask[y]/1000,tradeFee:(plan.sellFee+plan.buyFee)/1000,n:units.join(":")});
     }
     log.push(e);
    }
@@ -351,10 +351,22 @@ if(typeof document!=="undefined"){
    for(const [key,asset] of Object.entries(assets)){
     if(asset.visible)set("asset-return-"+key," "+pct(asset.points[i].value-1));
    }
+   const event=eventByDate.get(f.date), status=$("daily-status");
    $("account-readout").hidden=mode==="ideal";
    if(mode!=="ideal"){
     const dailyReturn=i>0?Math.round((f.nav/current.frames[i-1].nav-1)*10000)/100:null;
     set("account-amounts",money(f.nav));
+    const tradeRow=$("account-day-trade"), swapped=event?.sold>0&&event?.bought>0&&!event.skipped;
+    tradeRow.hidden=!swapped;
+    if(swapped){
+     const changes=seriesAssets.map(({kind},j)=>{
+      const selling=j===event.x, quantity=selling?event.sold:event.bought;
+      return (j===0?"A ":"B ")+(selling?"−":"+")+quantity.toLocaleString("zh-CN")+(kind==="etf"?" 份":" 股");
+     });
+     set("account-day-trade-details",changes.join(" · ")+" · 成交金额：卖 "+money(event.sellAmount)+" / 买 "+money(event.buyAmount)+" · 手续费 "+money(event.tradeFee));
+    }else{
+     set("account-day-trade-details","");
+    }
     for(const [j,{quantity,price,marketValue}] of f.closingPositions.entries()){
      const key=j===0?"a":"b", etf=seriesAssets[j].kind==="etf";
      set("account-close-"+key,key.toUpperCase()+"：持有 "+quantity.toLocaleString("zh-CN")+(etf?" 份":" 股")+" · 收盘价 ¥"+price.toFixed(etf?3:2)+" · 市值 "+money(marketValue));
@@ -369,7 +381,6 @@ if(typeof document!=="undefined"){
     $(id).dataset.sign=value>0?"up":value<0?"down":"flat";
    }
    $("daily-readout").title=move?"按回测口径，以当天收盘相对上个交易日收盘计算。":"样本首日无前一日数据。";
-   const event=eventByDate.get(f.date), status=$("daily-status");
    status.dataset.kind=event?.bottom?"blocked":event&&!event.skipped?"trade":"idle";
    status.textContent=event?.bottom?"底仓拦截":event?.reason??(event?"交易":"未达条件");
    status.title=event?(event.bottom?"至少保留一份底仓，未换仓":event.reason??"交易")
