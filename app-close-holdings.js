@@ -184,35 +184,37 @@ function planAccountSwap({holdings,portions,cash,seller,bid,ask,kinds,sellable=h
 // Normal-session bands for the supported listings. They apply to the preview only.
 const planUpperPct={"159509":10,"600900":10,"588170":20,"515880":10};
 // Quote scenarios use only the selected day's closes; never read next-session prices.
-function nextTradePlans(frame,priceTicks,kinds,threshold,codes,nextDate){
- if(nextDate&&codes.some(code=>calendarAssets[code].splits?.[nextDate]||calendarAssets[code].divs?.[nextDate])){
-  const reason="次日除权除息，暂不试算";
-  return [{reason},{reason}];
- }
+function nextTradePlans(frame,priceTicks,kinds,threshold,codes,nextDate,buyerMove=0){
+ const both=reason=>[0,1].map(()=>({reason}));
+ if(nextDate&&codes.some(code=>calendarAssets[code].splits?.[nextDate]||calendarAssets[code].divs?.[nextDate]))return both("次日除权除息，暂不试算");
  const holdings=frame.closingPositions.map(p=>p.quantity);
  const closes=frame.closingPositions.map(p=>Math.round(p.price*1000));
  const cash=Math.round(frame.cash*1000),parsed=frame.n?.split(":").map(Number);
  const previous=parsed?.length===2&&parsed.every(n=>Number.isInteger(n)&&n>0)?parsed:null;
+ if(!closes.every(p=>p>0)||!priceTicks.every(p=>p>0)||!Number.isFinite(threshold)||!Number.isFinite(buyerMove))return both("暂无有效行情");
+ const limits=codes.map(code=>planUpperPct[code]/100);
+ const bounds=closes.map((p,i)=>[1-limits[i],1+limits[i]].map(f=>Math.round(p*f/priceTicks[i])*priceTicks[i]));
  return [0,1].map(seller=>{
-  const buyer=1-seller;
-  if(!closes.every(p=>p>0)||!priceTicks.every(p=>p>0)||!Number.isFinite(threshold))return {reason:"暂无有效报价"};
-  const quotes=closes.slice(),step=priceTicks[seller];
-  // Buy leg: unchanged reference price, plus one tick for its modeled ask.
-  const ask=closes.map((p,i)=>p+priceTicks[i]);
-  // Preview only: 588170 needs twice the configured spread when it is the moving leg.
-  const previewThreshold=codes[seller]==="588170"?threshold*2:threshold;
-  const required=closes[seller]*(ask[buyer]/closes[buyer]+previewThreshold+1e-12);
-  let sellBid=(Math.floor(required/step)+1)*step;
-  if(!(sellBid/closes[seller]-ask[buyer]/closes[buyer]>previewThreshold+1e-12))sellBid+=step;
-  // Sell leg uses bid; its reference price is one tick higher.
-  quotes[seller]=sellBid+step;
-  const upperPct=planUpperPct[codes[seller]];
-  const upper=Math.round(closes[seller]*(100+upperPct)/(100*step))*step;
-  if(quotes[seller]>upper)return {reason:"买入侧平盘时，触发价超出涨停价"};
-  const bid=quotes.map((p,i)=>p-priceTicks[i]);
-  const allocation=accountAllocation(holdings,quotes,cash,previous,frame.anchor);
-  if(allocation.reason)return {reason:allocation.reason};
-  return {...planAccountSwap({holdings,portions:allocation.portions,cash,seller,bid,ask,kinds}),sellBid,buyAsk:ask[buyer]};
+  const buyer=1-seller,step=priceTicks[seller];
+  if(Math.abs(buyerMove)>limits[buyer]+1e-12)return {reason:"买入侧涨跌幅超出限制"};
+  const quotes=closes.slice();
+  quotes[buyer]=Math.round(closes[buyer]*(1+buyerMove)/priceTicks[buyer])*priceTicks[buyer];
+  const ask=quotes.map((p,i)=>p+priceTicks[i]);
+  const gaps=[];
+  for(let price=bounds[seller][0];price<=bounds[seller][1];price+=step){
+   quotes[seller]=price;
+   const bid=quotes.map((p,i)=>p-priceTicks[i]);
+   const spread=bid[seller]/closes[seller]-ask[buyer]/closes[buyer];
+   if(spread<=threshold+1e-12)continue;
+   const allocation=accountAllocation(holdings,quotes,cash,previous,frame.anchor);
+   const plan=allocation.reason?{reason:allocation.reason}:planAccountSwap({holdings,portions:allocation.portions,cash,seller,bid,ask,kinds});
+   const sellMove=price/closes[seller]-1,prev=gaps.at(-1);
+   if(prev&&prev.reason===plan.reason&&prev.bought===plan.bought){
+    prev.spreadMax=spread;prev.sellMoveMax=sellMove;
+    if(!plan.reason){prev.soldMin=Math.min(prev.soldMin,plan.sold);prev.soldMax=Math.max(prev.soldMax,plan.sold);}
+   }else gaps.push({reason:plan.reason,bought:plan.bought,soldMin:plan.sold,soldMax:plan.sold,spreadMin:spread,spreadMax:spread,sellMoveMin:sellMove,sellMoveMax:sellMove});
+  }
+  return gaps.length?{gaps,buyMove:quotes[buyer]/closes[buyer]-1}:{reason:"涨跌停范围内未达阈值"};
  });
 }
 
@@ -424,6 +426,35 @@ if(typeof document!=="undefined"){
   else showData(cursorIndex===null?undefined:rows[cursorIndex][0]);
  }
  gapToggle.addEventListener("click",()=>toggleGap(!gapVisible));
+ let previewContext=null;
+ const buyerMoveInput=$("plan-buyer-move");
+ function paintNextPlan(){
+  if(!previewContext)return;
+  const {frame,kinds,nextDate}=previewContext;
+  const input=buyerMoveInput.valueAsNumber;
+  const rangeText=(lo,hi,format)=>format(lo)===format(hi)?format(lo):format(lo)+" ～ "+format(hi);
+  const gapFmt=x=>(x*100).toFixed(2)+"%";
+  const qtyFmt=x=>x.toLocaleString("zh-CN");
+  const sign=x=>x>0?"up":x<0?"down":"flat";
+  const rangeMove=(lo,hi)=>'<small data-sign="'+(sign(lo)===sign(hi)?sign(lo):"flat")+'">'+rangeText(lo,hi,pct)+'</small>';
+  set("plan-threshold","触发阈值 "+activeThreshold+"%");
+  $("plan-results").innerHTML=nextTradePlans(frame,tick,kinds,activeThreshold/100,market.codes,nextDate,Number.isFinite(input)?input/100:0).map((group,seller)=>{
+   const direction=seller===0?"A → B":"B → A";
+   if(group.reason)return '<div class="plan-row"><span>'+direction+'</span><span class="plan-off">'+group.reason+'</span></div>';
+   return group.gaps.map((plan,i)=>{
+    const label='<span>'+(!i?direction:"")+'</span>',spread='<span class="plan-spread">'+rangeText(plan.spreadMin,plan.spreadMax,gapFmt)+'</span>';
+    if(plan.reason)return '<div class="plan-row">'+label+'<span class="plan-off">'+plan.reason+'</span>'+spread+'</div>';
+    const cols=[0,1].map(side=>{
+     const sell=side===seller,unit=kinds[side]==="etf"?" 份":" 股";
+     const quantity=sell?rangeText(plan.soldMin,plan.soldMax,x=>"−"+qtyFmt(x)):"+"+qtyFmt(plan.bought);
+     const move=sell?rangeMove(plan.sellMoveMin,plan.sellMoveMax):rangeMove(group.buyMove,group.buyMove);
+     return '<span>'+(side===0?"A ":"B ")+'<strong data-sign="'+(sell?"down":"up")+'">'+quantity+'</strong>'+unit+move+'</span>';
+    });
+    return '<div class="plan-row">'+label+cols.join("")+spread+'</div>';
+   }).join("");
+  }).join("");
+ }
+ buyerMoveInput.addEventListener("input",paintNextPlan);
  function showData(time){
   if(view==="net"){
    const i=index.get(time)??defaultReadoutIndex(), f=current.frames[i], move=mode!=="ideal"?accountMoves[i]:dailyMoves[i];
@@ -466,23 +497,8 @@ if(typeof document!=="undefined"){
      set("account-close-"+key,key.toUpperCase()+"：持有 "+quantity.toLocaleString("zh-CN")+(etf?" 份":" 股")+" · 收盘价 ¥"+price.toFixed(etf?3:2)+" · 市值 "+money(marketValue));
     }
     set("account-close-cash","现金："+money(f.cash));
-    const kindBySide=seriesAssets.map(asset=>asset.kind);
-    nextTradePlans(f,tick,kindBySide,activeThreshold/100,market.codes,current.frames[i+1]?.date).forEach((plan,seller)=>{
-     const reason=$("plan-"+seller+"-reason");
-     reason.hidden=!plan.reason;
-     reason.textContent=plan.reason?"不交易 · "+plan.reason:"";
-     for(let side=0;side<2;side++){
-      const id="plan-"+seller+"-"+side;
-      $(id+"-cell").hidden=!!plan.reason;
-      if(plan.reason)continue;
-      const selling=side===seller,qty=selling?plan.sold:plan.bought;
-      set(id+"-qty",(selling?"−":"+")+qty.toLocaleString("zh-CN"));
-      $(id+"-qty").dataset.sign=selling?"down":"up";
-      set(id+"-unit",kindBySide[side]==="etf"?" 份":" 股");
-      const quote=(selling?plan.sellBid:plan.buyAsk)/1000;
-      set(id+"-price"," @ ¥"+quote.toFixed(tick[side]===1?3:2));
-     }
-    });
+    previewContext={frame:f,kinds:seriesAssets.map(asset=>asset.kind),nextDate:current.frames[i+1]?.date};
+    paintNextPlan();
     set("account-daily-return",dailyReturn===null?"—":fmt(dailyReturn)+"%");
     $("account-daily-return").dataset.sign=dailyReturn>0?"up":dailyReturn<0?"down":"flat";
     $("account-daily-return").title=i>0?"策略总资产（含现金）相对上一交易日的变化":"样本首日无前一日总资产";

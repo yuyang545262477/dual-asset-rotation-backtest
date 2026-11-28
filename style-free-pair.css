@@ -81,12 +81,13 @@ header .brand,main.shell,footer.shell{width:calc(100% - 36px);max-width:1800px}.
 :where(:root[data-theme="dark"]) .year-pnl[data-sign=up]{color:#fd9ca8}
 :where(:root[data-theme="dark"]) .year-pnl[data-sign=down]{color:#7addb3}
 
-.terminal:has(#account-readout:not([hidden]) #next-trade-plan){--plan-space:72px}
-#next-trade-plan .account-readout{white-space:nowrap;overflow-x:auto;scrollbar-width:none}
-
-#next-trade-plan .plan-row,#account-day-trade-content{grid-template-columns:4.25em 13em max-content;column-gap:.4em}
-#next-trade-plan .plan-row{display:grid}
+.terminal:has(#account-readout:not([hidden]) #next-trade-plan){--plan-space:160px}
+#account-day-trade-content{column-gap:.4em;grid-template-columns:4.25em 13em max-content}
 @media(min-width:681px){#account-day-trade-content{grid-template-columns:4.25em 13em max-content max-content}}
-#next-trade-plan .plan-reason{grid-column:2/-1}
-
-#next-trade-plan .plan-price{color:var(--muted);font-size:.86em}
+#next-trade-plan .plan-heading{display:flex;align-items:center;gap:.6em;white-space:nowrap;overflow:auto;scrollbar-width:none}
+#plan-buyer-move{width:4.6em;padding:1px 3px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px}
+#plan-scroll{height:8.4em;overflow:auto}
+#next-trade-plan .plan-row{display:grid;grid-template-columns:4.25em 13em 13em max-content;column-gap:.4em;padding:2px 0;white-space:nowrap;width:max-content;min-width:100%}
+#next-trade-plan .plan-columns{position:sticky;top:0;background:var(--surface);z-index:1}
+#next-trade-plan .plan-row small{display:block;font-size:.9em}
+#next-trade-plan .plan-off{grid-column:2/4}
