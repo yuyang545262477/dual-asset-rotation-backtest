@@ -298,6 +298,30 @@ if(typeof document!=="undefined"){
  }
  monthlyChoice.addEventListener("change",paintMonths);
  let ohlc,byDate,index;
+ let yearRanges=new Map();
+ const periods=$("chart-periods");
+ const defaultReadoutIndex=()=>range==="start"?0:(yearRanges.get(range)?.last??rows.length-1);
+ function renderYearRanges(){
+  yearRanges=new Map();
+  rows.forEach(([date],i)=>{
+   const year=date.slice(0,4);
+   if(!yearRanges.has(year))yearRanges.set(year,{first:i,last:i});
+   else yearRanges.get(year).last=i;
+  });
+  if(range!=="all"&&range!=="start"&&!yearRanges.has(range))range="all";
+  periods.querySelectorAll("[data-year-range]").forEach(button=>button.remove());
+  const all=periods.querySelector('[data-range="all"]');
+  for(const [year,{first,last}] of yearRanges){
+   const button=document.createElement("button");
+   button.type="button";
+   button.dataset.range=year;
+   button.dataset.yearRange="";
+   button.textContent=year+" 年";
+   button.title=rows[first][0]+" 至 "+rows[last][0];
+   button.setAttribute("aria-pressed",String(range===year));
+   all.before(button);
+  }
+ }
  // Individual adjusted returns stay on the right net-value axis.
  const assets={
   a:{color:palette.a,points:rows.map(([time,a])=>({time,value:a/rows[0][1]})),visible:false,series:null},
@@ -354,7 +378,7 @@ if(typeof document!=="undefined"){
  gapToggle.addEventListener("click",()=>toggleGap(!gapVisible));
  function showData(time){
   if(view==="net"){
-   const i=index.get(time)??(range==="start"?0:rows.length-1), f=current.frames[i], move=mode!=="ideal"?accountMoves[i]:dailyMoves[i];
+   const i=index.get(time)??defaultReadoutIndex(), f=current.frames[i], move=mode!=="ideal"?accountMoves[i]:dailyMoves[i];
    set("strategy-return"," "+pct(f.value-1));
    const differenceRate=pct(relativeHold(f));
    if(gapVisible)set("hold-gap-return"," "+differenceRate);
@@ -412,7 +436,7 @@ if(typeof document!=="undefined"){
   }else{
    $("daily-readout").hidden=true;
    $("account-readout").hidden=true;
-   const f=byDate[view].get(time)??(range==="start"?ohlc[view][0]:ohlc[view].at(-1)), d=tick[view==="a"?0:1]===1?3:2;
+   const f=byDate[view].get(time)??ohlc[view][defaultReadoutIndex()], d=tick[view==="a"?0:1]===1?3:2;
    set("readout",f.time+" · 开 "+f.open.toFixed(d)+" · 高 "+f.high.toFixed(d)+" · 低 "+f.low.toFixed(d)+" · 收 "+f.close.toFixed(d));
   }
  }
@@ -420,8 +444,11 @@ if(typeof document!=="undefined"){
   if(!chart)return;
   if(range==="all")chart.timeScale().fitContent();
   else if(range==="start")chart.timeScale().setVisibleLogicalRange({from:0,to:Math.min(364,rows.length-1)});
-  else chart.timeScale().setVisibleLogicalRange({from:Math.max(0,rows.length-Number(range)),to:rows.length+2});
-  document.querySelectorAll("[data-range]").forEach(e=>e.setAttribute("aria-pressed",e.dataset.range===range));
+  else{
+   const bounds=yearRanges.get(range);
+   if(bounds)chart.timeScale().setVisibleLogicalRange({from:bounds.first-.49,to:bounds.last+.49});
+  }
+  periods.querySelectorAll("[data-range]").forEach(e=>e.setAttribute("aria-pressed",e.dataset.range===range));
  }
  function setNetSummary(){
   const title=gapVisible?"比持有 · 0% 为基准":"蓝线：轮动 · 灰线：持有";
@@ -612,7 +639,13 @@ if(typeof document!=="undefined"){
   if(e.key==="Escape"&&stockViews.open){e.preventDefault();stockViews.open=false;stockLabel.focus();}
  });
  document.addEventListener("pointerdown",e=>{if(stockViews.open&&!stockViews.contains(e.target))stockViews.open=false;});
- document.querySelectorAll("[data-range]").forEach(e=>e.addEventListener("click",()=>{range=e.dataset.range;setRange();clearCursor();}));
+ periods.addEventListener("click",e=>{
+  const button=e.target.closest("button[data-range]");
+  if(!button||!periods.contains(button))return;
+  range=button.dataset.range;
+  setRange();
+  clearCursor();
+ });
  function update(value, preserve=false){
   const t=Math.min(12,Math.max(0,value));
   if(!preserve)$("limit").value=t;
@@ -710,6 +743,7 @@ if(typeof document!=="undefined"){
   ohlc=Object.fromEntries(Object.entries(market.candles).map(([k,days])=>[k,days.map(([time,open,close,high,low])=>({time,open,high,low,close}))]));
   byDate=Object.fromEntries(Object.entries(ohlc).map(([k,days])=>[k,new Map(days.map(bar=>[bar.time,bar]))]));
   index=new Map(rows.map(([d],i)=>[d,i]));
+  renderYearRanges();
   last=rows.length-1;
   cursorIndex=null; keyboardCursor=false;
   chart?.clearCrosshairPosition();
