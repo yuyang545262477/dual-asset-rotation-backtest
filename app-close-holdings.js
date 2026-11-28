@@ -372,16 +372,21 @@ if(typeof document!=="undefined"){
     $("account-day-trade-content").hidden=!swapped;
     $("account-day-trade-blank").hidden=swapped;
     if(swapped){
-     const changes=seriesAssets.map(({kind},j)=>{
+     const sign=value=>value>0?"up":value<0?"down":"flat";
+     const prefix=value=>value>0?"+":value<0?"−":"";
+     const showChange=(id,value,label)=>{
+      set(id,prefix(value)+label);
+      $(id).dataset.sign=sign(value);
+     };
+     seriesAssets.forEach(({kind},j)=>{
       const selling=j===event.x, quantity=selling?event.sold:event.bought;
-      return (j===0?"A ":"B ")+(selling?"−":"+")+quantity.toLocaleString("zh-CN")+(kind==="etf"?" 份":" 股");
+      showChange(j===0?"day-trade-a":"day-trade-b",selling?-quantity:quantity,quantity.toLocaleString("zh-CN")+(kind==="etf"?" 份":" 股"));
      });
-     set("account-day-trade-details",changes.join(" · "));
-     const cashSign=event.cashChange>0?"+":event.cashChange<0?"−":"";
-     set("account-day-trade-cost","成交金额：卖 "+money(event.sellAmount)+" / 买 "+money(event.buyAmount)+" · 手续费 "+money(event.tradeFee)+" · 现金 "+cashSign+money(Math.abs(event.cashChange)));
-    }else{
-     set("account-day-trade-details","");
-     set("account-day-trade-cost","");
+     const delta=Math.round((event.buyAmount-event.sellAmount)*100)/100;
+     set("day-trade-sell",money(event.sellAmount));
+     showChange("day-trade-delta",delta,money(Math.abs(delta)));
+     set("day-trade-fee",money(event.tradeFee));
+     showChange("day-trade-cash",event.cashChange,money(Math.abs(event.cashChange)));
     }
     for(const [j,{quantity,price,marketValue}] of f.closingPositions.entries()){
      const key=j===0?"a":"b", etf=seriesAssets[j].kind==="etf";
