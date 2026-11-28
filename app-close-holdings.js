@@ -208,13 +208,13 @@ function nextTradePlans(frame,priceTicks,kinds,threshold,codes,nextDate,buyerMov
    if(spread<=threshold+1e-12)continue;
    const allocation=accountAllocation(holdings,quotes,cash,previous,frame.anchor);
    const plan=allocation.reason?{reason:allocation.reason}:planAccountSwap({holdings,portions:allocation.portions,cash,seller,bid,ask,kinds});
-   const sellMove=price/closes[seller]-1,prev=gaps.at(-1);
-   if(prev&&prev.reason===plan.reason&&prev.bought===plan.bought){
-    prev.spreadMax=spread;prev.sellMoveMax=sellMove;
-    if(!plan.reason){prev.soldMin=Math.min(prev.soldMin,plan.sold);prev.soldMax=Math.max(prev.soldMax,plan.sold);}
-   }else gaps.push({reason:plan.reason,bought:plan.bought,soldMin:plan.sold,soldMax:plan.sold,spreadMin:spread,spreadMax:spread,sellMoveMin:sellMove,sellMoveMax:sellMove});
+   const anchor=allocation.anchor, quantity=plan.reason?null:(anchor===seller?plan.sold:plan.bought);
+   const prev=gaps.at(-1);
+   if(prev&&prev.reason===plan.reason&&(plan.reason||(prev.anchor===anchor&&prev.quantity===quantity))){
+    prev.spreadMax=spread;
+   }else gaps.push({reason:plan.reason,anchor,quantity,spreadMin:spread,spreadMax:spread});
   }
-  return gaps.length?{gaps,buyMove:quotes[buyer]/closes[buyer]-1}:{reason:"涨跌停范围内未达阈值"};
+  return gaps.length?{gaps}:{reason:"涨跌停范围内未达阈值"};
  });
 }
 
@@ -444,12 +444,8 @@ if(typeof document!=="undefined"){
     const cutoff=i?boundary(group.gaps[i-1].spreadMax,plan.spreadMin):activeThreshold+"%";
     const label='<span class="plan-cutoff">&gt;'+cutoff+'：</span>';
     if(plan.reason)return label+plan.reason;
-    const cols=[0,1].map(side=>{
-     const sell=side===seller,unit=kinds[side]==="etf"?" 份":" 股";
-     const quantity=sell?(plan.soldMin===plan.soldMax?"−"+qtyFmt(plan.soldMin):"−"+qtyFmt(plan.soldMin)+"～−"+qtyFmt(plan.soldMax)):"+"+qtyFmt(plan.bought);
-     return (side===0?"A ":"B ")+'<strong data-sign="'+(sell?"down":"up")+'">'+quantity+'</strong>'+unit;
-    });
-    return label+cols.join(" · ");
+    const side=plan.anchor,sell=side===seller,unit=kinds[side]==="etf"?" 份":" 股";
+    return label+(side===0?"A ":"B ")+'<strong data-sign="'+(sell?"down":"up")+'">'+(sell?"−":"+")+qtyFmt(plan.quantity)+'</strong>'+unit;
    });
    return '<div class="plan-row">'+direction+stages.join('<span class="plan-separator">；</span>')+'</div>';
   }).join("");
