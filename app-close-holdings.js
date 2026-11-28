@@ -344,9 +344,12 @@ if(typeof document!=="undefined"){
   const key=button.dataset.assetReturn, asset=assets[key], label=$("asset-return-"+key);
   button.style.setProperty("--asset-color",asset.color);
   button.addEventListener("click",()=>{
-   if(!asset.series)return;
+   if(!chart||view!=="net")return;
+   const visibleRange=chart.timeScale().getVisibleLogicalRange();
+   cancelPan();
    asset.visible=!asset.visible;
-   asset.series.applyOptions({visible:asset.visible});
+   syncAssetPanes();
+   if(visibleRange)chart.timeScale().setVisibleLogicalRange(visibleRange);
    button.setAttribute("aria-pressed",asset.visible);
    label.hidden=!asset.visible;
    syncNetAxes();
@@ -355,7 +358,8 @@ if(typeof document!=="undefined"){
  }
  const chart=TV?.createChart(host,{
   autoSize:true,
-  layout:{background:{type:TV.ColorType.Solid,color:palette.background},textColor:palette.text,fontSize:13,attributionLogo:false},
+  layout:{background:{type:TV.ColorType.Solid,color:palette.background},textColor:palette.text,fontSize:13,attributionLogo:false,
+   panes:{separatorColor:palette.border,separatorHoverColor:palette.grid}},
   grid:{vertLines:{color:palette.grid},horzLines:{color:palette.grid}},
   crosshair:{mode:TV.CrosshairMode.Normal},
   leftPriceScale:{visible:false,borderColor:palette.border,textColor:palette.gapAxis,scaleMargins:{top:.1,bottom:.11}},
@@ -363,6 +367,29 @@ if(typeof document!=="undefined"){
   timeScale:{borderColor:palette.border,rightOffset:3,timeVisible:false,fixLeftEdge:true},
   localization:{locale:"zh-CN",dateFormat:"yyyy-MM-dd"}
  });
+ function syncAssetPanes(){
+  const show=view==="net";
+  for(const [key,asset] of Object.entries(assets)){
+   if(asset.series&&(!show||!asset.visible)){
+    chart.removeSeries(asset.series);asset.series=null;
+    if(crosshairAsset===key){crosshairAsset=null;crosshairY=null;chart.clearCrosshairPosition();}
+   }else if(!asset.series&&show&&asset.visible){
+    const pane=chart.addPane();
+    asset.series=pane.addSeries(TV.CandlestickSeries,{
+     ...assetCandleColors(asset.color),lastValueVisible:false,priceLineVisible:false,
+     priceFormat:{type:"price",precision:3,minMove:.001}
+    });
+    asset.series.setData(asset.candles);
+    pane.setStretchFactor(1);
+   }
+  }
+  if(assets.a.series&&assets.b.series&&assets.a.series.getPane().paneIndex()>assets.b.series.getPane().paneIndex()){
+   chart.swapPanes(assets.a.series.getPane().paneIndex(),assets.b.series.getPane().paneIndex());
+  }
+  const count=Object.values(assets).filter(asset=>asset.series).length;
+  chart.panes()[0]?.setStretchFactor(count?2.8:1);
+  terminal.style.setProperty("--asset-pane-extra",count*160+"px");
+ }
  let netTradeMarkers,gapTradeMarkers,gapZeroLine;
  const gapToggle=$("hold-gap-toggle"), strategyToggle=$("strategy-toggle"), gapLabel=$("hold-gap-return");
  function syncNetAxes(){
@@ -488,7 +515,7 @@ if(typeof document!=="undefined"){
  }
  const candleColors=()=>({upColor:palette.up,downColor:palette.down,wickUpColor:palette.up,wickDownColor:palette.down,borderVisible:false});
  function setView(next){
-  cancelPan();crosshairY=null;
+  cancelPan();crosshairY=null;crosshairAsset=null;
   view=next;cursorIndex=null;keyboardCursor=false;
   if(!chart){set("readout","图表组件无法加载，收益和换仓记录仍可查看。");return;}
   netTradeMarkers?.detach();gapTradeMarkers?.detach();
@@ -518,14 +545,6 @@ if(typeof document!=="undefined"){
     gapTradeMarkers=TV.createSeriesMarkers(gapSeries,[],{autoScale:false});
    }
    gapZeroLine=gapSeries.createPriceLine({price:0,color:palette.zero,lineWidth:1,lineStyle:TV.LineStyle.Dashed,axisLabelVisible:false,title:""});
-   for(const asset of Object.values(assets)){
-    asset.series=chart.addSeries(TV.CandlestickSeries,{
-     ...assetCandleColors(asset.color),visible:asset.visible,
-     lastValueVisible:false,priceLineVisible:false,
-     priceFormat:{type:"price",precision:3,minMove:.001}
-    });
-    asset.series.setData(asset.candles);
-   }
    updateNet();
   }else{
    const colors=candleColors();
@@ -537,10 +556,11 @@ if(typeof document!=="undefined"){
   }
   if(view!=="net")host.setAttribute("aria-label",market.names[view==="a"?0:1]+" 日 K 线");
   document.querySelectorAll("[data-view]").forEach(e=>e.setAttribute("aria-pressed",e.dataset.view===view&&!gapVisible));
+  syncAssetPanes();
   syncNetAxes();
   setRange();
  }
- let crosshairY=null,panFrame=0,pendingPan=null,panEdgeUnlocked=false;
+ let crosshairY=null,crosshairAsset=null,panFrame=0,pendingPan=null,panEdgeUnlocked=false;
  function cancelPan(){
   if(panFrame)cancelAnimationFrame(panFrame);
   panFrame=0;pendingPan=null;
@@ -551,6 +571,7 @@ if(typeof document!=="undefined"){
   if(time&&index.has(time)){
    const nextIndex=index.get(time);
    if(Number.isFinite(p.point?.y))crosshairY=p.point.y;
+   crosshairAsset=Object.keys(assets).find(key=>assets[key].series&&assets[key].series.getPane().paneIndex()===p.paneIndex)??null;
    if(cursorIndex!==nextIndex){cursorIndex=nextIndex;showData(time);}
   }
   else if(mainSeries&&!keyboardCursor&&cursorIndex===null){showData();}
@@ -563,7 +584,7 @@ if(typeof document!=="undefined"){
   const t=chart.timeScale(), span=Math.max(8,Math.min(last,width)), start=Math.max(0,Math.min(last-span,from));
   t.setVisibleLogicalRange({from:start,to:start+span});
  }
- function selectDay(i,follow=true,fixedY=null){
+ function selectDay(i,follow=true,fixedY=null,fixedAsset=null){
   keyboardCursor=true;cursorIndex=clampDay(i);
   const t=chart.timeScale(), r=t.getVisibleLogicalRange();
   if(follow&&r&&(cursorIndex<Math.ceil(r.from)||cursorIndex>Math.floor(r.to))){
@@ -573,7 +594,8 @@ if(typeof document!=="undefined"){
   const date=rows[cursorIndex][0], f=current.frames[cursorIndex];
   const comparing=view==="net"&&gapVisible;
   const value=view==="net"?(comparing?relativeHold(f):f.value):byDate[view].get(date)?.close;
-  const series=comparing?gapSeries:mainSeries;
+  const series=assets[fixedAsset]?.series??(comparing?gapSeries:mainSeries);
+  crosshairAsset=assets[fixedAsset]?.series?fixedAsset:null;
   const cursorPrice=Number.isFinite(fixedY)?series.coordinateToPrice(fixedY):value;
   if(Number.isFinite(cursorPrice)){
    chart.setCrosshairPosition(cursorPrice,date,series);
@@ -582,7 +604,7 @@ if(typeof document!=="undefined"){
   showData(date);
  }
  function clearCursor(){
-  cancelPan();crosshairY=null;
+  cancelPan();crosshairY=null;crosshairAsset=null;
   cursorIndex=null;keyboardCursor=false;chart?.clearCrosshairPosition();showData();
  }
  function panWithFixedCrosshair(step){
@@ -594,7 +616,8 @@ if(typeof document!=="undefined"){
   if(next===origin)return;
   const from=pendingPan?.from??r.from,to=pendingPan?.to??r.to;
   const y=pendingPan?.y??(cursorVisible?crosshairY:null);
-  pendingPan={index:next,from:from+step,to:to+step,y};
+  const key=pendingPan?.key??(cursorVisible?crosshairAsset:null);
+  pendingPan={index:next,from:from+step,to:to+step,y,key};
   keyboardCursor=true;
   if(!panEdgeUnlocked){scale.applyOptions({fixLeftEdge:false});panEdgeUnlocked=true;}
   // Shift the logical range and date by the same number of bars to preserve the x coordinate.
@@ -602,7 +625,7 @@ if(typeof document!=="undefined"){
   if(!panFrame)panFrame=requestAnimationFrame(()=>{
    panFrame=0;
    const target=pendingPan;pendingPan=null;
-   if(target)selectDay(target.index,false,target.y);
+   if(target)selectDay(target.index,false,target.y,target.key);
   });
  }
  function handleShortcut(e){
@@ -818,7 +841,10 @@ if(typeof document!=="undefined"){
  changePair();
  theme.watch(p=>{
   palette=p;
-  if(chart)theme.apply(chart,TV,p);
+  if(chart){
+   theme.apply(chart,TV,p);
+   chart.applyOptions({layout:{panes:{separatorColor:p.border,separatorHoverColor:p.grid}}});
+  }
   if(view==="net")mainSeries?.applyOptions({color:p.net});
   else mainSeries?.applyOptions(candleColors());
   holdSeries?.applyOptions({color:p.hold});
