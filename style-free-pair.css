@@ -64,6 +64,7 @@ header .brand,main.shell,footer.shell{width:calc(100% - 36px);max-width:1800px}.
 /* Hovering across dates must not resize the chart or relocate its range buttons. */
 #terminal:has(#account-day-trade) .terminal-info{display:grid;grid-template-columns:minmax(0,1fr) auto}
 #terminal:has(#account-day-trade) .daily-readout:not([hidden]){display:grid;grid-template-columns:repeat(4,max-content);justify-content:start}
+#account-day-trade-content:not([hidden]){display:grid}
 #account-day-trade{line-height:1.45;block-size:1.45em;white-space:nowrap;overflow-x:auto;scrollbar-width:none}
 @media(max-width:960px){
  #terminal:has(#account-day-trade) .terminal-info{grid-template-columns:minmax(0,1fr)}
@@ -71,8 +72,7 @@ header .brand,main.shell,footer.shell{width:calc(100% - 36px);max-width:1800px}.
 @media(max-width:680px){
  #terminal:has(#account-day-trade) .daily-readout:not([hidden]){grid-template-columns:repeat(2,max-content)}
  #account-day-trade{block-size:2.9em}
- .day-trade-quantity,.day-trade-cost{display:block}
- .day-trade-separator{display:none}
+ .day-trade-cost{grid-column:1/-1}
 }
 
 .month-year h3 .year-pnl{display:inline-block;margin-inline-start:.4em;font-variant-numeric:tabular-nums}
@@ -84,7 +84,9 @@ header .brand,main.shell,footer.shell{width:calc(100% - 36px);max-width:1800px}.
 .terminal:has(#account-readout:not([hidden]) #next-trade-plan){--plan-space:72px}
 #next-trade-plan .account-readout{white-space:nowrap;overflow-x:auto;scrollbar-width:none}
 
-#next-trade-plan .plan-row{display:grid;grid-template-columns:4.25em 13em max-content;column-gap:.4em}
+#next-trade-plan .plan-row,#account-day-trade-content{grid-template-columns:4.25em 13em max-content;column-gap:.4em}
+#next-trade-plan .plan-row{display:grid}
+@media(min-width:681px){#account-day-trade-content{grid-template-columns:4.25em 13em max-content max-content}}
 #next-trade-plan .plan-reason{grid-column:2/-1}
 
 #next-trade-plan .plan-price{color:var(--muted);font-size:.86em}
