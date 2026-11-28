@@ -374,9 +374,8 @@ if(typeof document!=="undefined"){
    }
    $("account-readout").hidden=mode==="ideal";
    if(mode!=="ideal"){
-    const diff=Math.round((f.nav-f.benchNav)*100)/100;
     const dailyReturn=i>0?Math.round((f.nav/current.frames[i-1].nav-1)*10000)/100:null;
-    set("account-amounts","资产 "+money(f.nav));
+    set("account-amounts",money(f.nav));
     for(const [j,{quantity,price,marketValue}] of f.closingPositions.entries()){
      const key=j===0?"a":"b", etf=seriesAssets[j].kind==="etf";
      set("account-close-"+key,key.toUpperCase()+"：持有 "+quantity.toLocaleString("zh-CN")+(etf?" 份":" 股")+" · 收盘价 ¥"+price.toFixed(etf?3:2)+" · 市值 "+money(marketValue));
@@ -385,11 +384,6 @@ if(typeof document!=="undefined"){
     set("account-daily-return",dailyReturn===null?"—":fmt(dailyReturn)+"%");
     $("account-daily-return").dataset.sign=dailyReturn>0?"up":dailyReturn<0?"down":"flat";
     $("account-daily-return").title=i>0?"策略总资产（含现金）相对上一交易日的变化":"样本首日无前一日总资产";
-    set("account-totals","策略总额 "+money(f.nav)+" · 持有总额 "+money(f.benchNav));
-    const diffRate=f.benchNav>0?differenceRate:"—";
-    set("account-difference",diffRate+" ("+(diff>0?"+":diff<0?"−":"")+money(Math.abs(diff))+")");
-    $("account-difference").title="百分比＝差额 ÷ 同日持有总额";
-    $("account-difference").dataset.sign=diff>0?"up":diff<0?"down":"flat";
    }
    for(const [id,value,unit] of [["daily-a",move?.a,"%"],["daily-b",move?.b,"%"],["daily-diff",move?.diff,"%"]]){
     set(id,value===undefined?"—":fmt(value*100)+unit);
