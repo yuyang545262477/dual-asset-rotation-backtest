@@ -181,8 +181,14 @@ function planAccountSwap({holdings,portions,cash,seller,bid,ask,kinds,sellable=h
  return {sold,bought,sellFee,buyFee,cashUsed,cashAfter:cash+gross-sellFee-cost-buyFee};
 }
 
+// Normal-session bands for the supported listings. They apply to the preview only.
+const planUpperPct={"159509":10,"600900":10,"588170":20,"515880":10};
 // Quote scenarios use only the selected day's closes; never read next-session prices.
-function nextTradePlans(frame,priceTicks,kinds,threshold){
+function nextTradePlans(frame,priceTicks,kinds,threshold,codes,nextDate){
+ if(nextDate&&codes.some(code=>calendarAssets[code].splits?.[nextDate]||calendarAssets[code].divs?.[nextDate])){
+  const reason="次日除权除息，暂不试算";
+  return [{reason},{reason}];
+ }
  const holdings=frame.closingPositions.map(p=>p.quantity);
  const closes=frame.closingPositions.map(p=>Math.round(p.price*1000));
  const cash=Math.round(frame.cash*1000),parsed=frame.n?.split(":").map(Number);
@@ -198,6 +204,9 @@ function nextTradePlans(frame,priceTicks,kinds,threshold){
   if(!(sellBid/closes[seller]-ask[buyer]/closes[buyer]>threshold+1e-12))sellBid+=step;
   // Sell leg uses bid; its reference price is one tick higher.
   quotes[seller]=sellBid+step;
+  const upperPct=planUpperPct[codes[seller]];
+  const upper=Math.round(closes[seller]*(100+upperPct)/(100*step))*step;
+  if(quotes[seller]>upper)return {reason:"买入侧平盘时，触发价超出涨停价"};
   const bid=quotes.map((p,i)=>p-priceTicks[i]);
   const allocation=accountAllocation(holdings,quotes,cash,previous,frame.anchor);
   if(allocation.reason)return {reason:allocation.reason};
@@ -456,7 +465,7 @@ if(typeof document!=="undefined"){
     }
     set("account-close-cash","现金："+money(f.cash));
     const kindBySide=seriesAssets.map(asset=>asset.kind);
-    nextTradePlans(f,tick,kindBySide,activeThreshold/100).forEach((plan,seller)=>{
+    nextTradePlans(f,tick,kindBySide,activeThreshold/100,market.codes,current.frames[i+1]?.date).forEach((plan,seller)=>{
      const reason=$("plan-"+seller+"-reason");
      reason.hidden=!plan.reason;
      reason.textContent=plan.reason?"不交易 · "+plan.reason:"";
