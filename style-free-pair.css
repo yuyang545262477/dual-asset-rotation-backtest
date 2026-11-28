@@ -87,7 +87,7 @@ header .brand,main.shell,footer.shell{width:calc(100% - 36px);max-width:1800px}.
 
 /* The readout floats over the plot; it never sizes the canvas. */
 .chart-stage{position:relative;display:flex;flex:1 1 0;min-width:0;min-height:0}
-.chart-stage>.quote-readout{position:absolute;z-index:2;inset:8px auto auto 10px;width:max-content;max-width:calc(100% - 22px);box-sizing:border-box;padding:7px 10px;background:color-mix(in srgb,var(--surface) 86%,transparent);border:1px solid var(--line);border-radius:8px;pointer-events:none}
+.chart-stage>.quote-readout{position:absolute;z-index:2;inset:8px auto auto 10px;width:max-content;max-width:calc(100% - 22px);box-sizing:border-box;padding:7px 10px;background:color-mix(in srgb,var(--surface) 86%,transparent);border:0;border-radius:8px;pointer-events:none}
 .chart-stage .daily-readout:not([hidden]){max-width:100%;overflow:hidden}
 .chart-stage .account-readout{margin-top:2px;line-height:1.35}
 .chart-stage #account-day-trade{block-size:1.35em}
