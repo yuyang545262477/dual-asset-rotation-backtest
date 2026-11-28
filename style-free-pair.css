@@ -49,3 +49,5 @@ header .brand,main.shell,footer.shell{width:calc(100% - 36px);max-width:1800px}.
  .workspace-tabs a[aria-current="page"]{background:#194338;color:#a0f3ce;border-color:#4e9c86}
  .asset-tip{background:#e6edf6;color:#172333}
 }
+
+.monthly-panel{margin-top:14px;min-width:0}.monthly-control{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:.875rem;white-space:nowrap}.monthly-control select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 8px}.monthly-readout{margin:10px 0 6px;color:var(--ink);font-size:.9rem;font-variant-numeric:tabular-nums;line-height:1.55}#monthly-chart{height:260px;min-width:0;overflow:hidden}@media(max-width:600px){#monthly-chart{height:220px}}

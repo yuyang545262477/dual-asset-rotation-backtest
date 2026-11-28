@@ -230,6 +230,19 @@ function simulateAccount(threshold, trade=true, capital=capitalByMode.account){
  const {value,hold,nav,benchNav}=frames.at(-1);
  return {value,hold,nav,benchNav,tr,signals,block,n:units,log,frames,year,dd,fees:totalFees/1000};
 }
+// Each month starts from the preceding month's ending value, or the initial principal.
+function monthlyPerformance(frames,principal){
+ const months=[];
+ let prevV=1,prevH=1;
+ for(let i=0;i<frames.length;i++){
+  const {date,value,hold}=frames[i], month=date.slice(0,7);
+  if(frames[i+1]?.date.slice(0,7)===month)continue;
+  months.push({month,time:month+"-01",strategy:value/prevV-1,hold:hold/prevH-1,
+   strategyPnl:(value-prevV)*principal,holdPnl:(hold-prevH)*principal});
+  prevV=value;prevH=hold;
+ }
+ return months;
+}
 if(typeof document!=="undefined"){
  const $=id=>document.getElementById(id), set=(id,v)=>{$(id).textContent=v;};
  let rankings={};
@@ -251,6 +264,52 @@ if(typeof document!=="undefined"){
  const host=$("chart"), terminal=$("terminal"), full=$("full");
  const TV=globalThis.LightweightCharts, theme=globalThis.dualChartTheme;
  let palette=theme.palette();
+ const monthlyHost=$("monthly-chart"), monthlyChoice=$("monthly-series");
+ let monthlyChart,monthlyBars,monthlyMonths=[],monthlyByTime=new Map(),monthlySelected=null,monthlyHasCash=false;
+ function showMonth(month){
+  if(!month){set("monthly-readout","—");return;}
+  const amount=value=>" ("+(value>0?"+":value<0?"−":"")+money(Math.abs(value))+")";
+  set("monthly-readout",month.month+" · 轮动 "+pct(month.strategy)+(monthlyHasCash?amount(month.strategyPnl):"")+
+    " · 持有不动 "+pct(month.hold)+(monthlyHasCash?amount(month.holdPnl):""));
+ }
+ function paintMonths(fit=false){
+  if(!monthlyBars)return;
+  const key=monthlyChoice.value;
+  monthlyBars.setData(monthlyMonths.map(m=>({time:m.time,value:m[key],
+   color:m[key]>1e-10?palette.up:m[key]<-1e-10?palette.down:palette.zero})));
+  if(fit)monthlyChart.timeScale().fitContent();
+ }
+ function renderMonths(frames,principal,hasCash){
+  const months=monthlyPerformance(frames,principal);
+  const fit=months.length!==monthlyMonths.length||months[0]?.time!==monthlyMonths[0]?.time;
+  monthlyMonths=months;
+  monthlyByTime=new Map(months.map(m=>[m.time,m]));
+  monthlyHasCash=hasCash;
+  monthlySelected=monthlyByTime.get(monthlySelected)?.time??months.at(-1)?.time;
+  showMonth(monthlyByTime.get(monthlySelected));
+  if(TV?.HistogramSeries&&!monthlyChart&&$("results").open){
+   monthlyChart=TV.createChart(monthlyHost,{
+    autoSize:true,
+    rightPriceScale:{scaleMargins:{top:.12,bottom:.12}},
+    timeScale:{minBarSpacing:2,tickMarkFormatter:t=>typeof t==="string"?t.slice(0,7):null},
+    localization:{locale:"zh-CN",timeFormatter:t=>typeof t==="string"?t.slice(0,7):""}
+   });
+   monthlyBars=monthlyChart.addSeries(TV.HistogramSeries,{base:0,lastValueVisible:false,priceLineVisible:false,
+    priceFormat:{type:"custom",minMove:.0001,formatter:pct}});
+   monthlyBars.createPriceLine({price:0,color:palette.zero,lineWidth:1,lineStyle:TV.LineStyle.Solid,axisLabelVisible:false});
+   const pickMonth=e=>{if(monthlyByTime.has(e.time)){monthlySelected=e.time;showMonth(monthlyByTime.get(e.time));}};
+   monthlyChart.subscribeCrosshairMove(pickMonth);
+   monthlyChart.subscribeClick(pickMonth);
+   theme.watch(p=>{theme.apply(monthlyChart,TV,p);paintMonths();});
+   paintMonths(true);
+  }else paintMonths(fit);
+ }
+ monthlyChoice.addEventListener("change",()=>paintMonths());
+ $("results").addEventListener("toggle",()=>{
+  if($("results").open&&current)requestAnimationFrame(()=>{
+   if($("results").open)renderMonths(current.frames,capitalByMode[mode]??1,mode!=="ideal");
+  });
+ });
  let ohlc,byDate,index;
  // Individual adjusted returns stay on the right net-value axis.
  const assets={
@@ -555,6 +614,7 @@ if(typeof document!=="undefined"){
   set("annual-avg-strategy",averages[0]===null?"—":pct(averages[0]));
   set("annual-avg-hold",averages[1]===null?"—":pct(averages[1]));
   const principal=capitalByMode[mode]??1;
+  renderMonths(current.frames,principal,mode!=="ideal");
   set("projection-capital",mode==="ideal"?"本金 1":compactMoney(principal));
   $("projections").innerHTML=projectionYears.map(n=>'<tr><td>'+n+' 年</td>'+averages.map(rate=>{
    if(rate===null)return "<td>—</td>";
