@@ -384,7 +384,8 @@ if(typeof document!=="undefined"){
      });
      const delta=Math.round((event.buyAmount-event.sellAmount)*100)/100;
      set("day-trade-sell",money(event.sellAmount));
-     showChange("day-trade-delta",delta,money(Math.abs(delta)));
+     set("day-trade-delta",(delta<0?"-":prefix(delta))+money(Math.abs(delta)));
+     $("day-trade-delta").dataset.sign=sign(delta);
      set("day-trade-fee",money(event.tradeFee));
      showChange("day-trade-cash",event.cashChange,money(Math.abs(event.cashChange)));
     }
