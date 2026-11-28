@@ -444,11 +444,20 @@ if(typeof document!=="undefined"){
      set("account-close-"+key,key.toUpperCase()+"：持有 "+quantity.toLocaleString("zh-CN")+(etf?" 份":" 股")+" · 收盘价 ¥"+price.toFixed(etf?3:2)+" · 市值 "+money(marketValue));
     }
     set("account-close-cash","现金："+money(f.cash));
-    const kindBySide=seriesAssets.map(asset=>asset.kind), names=["A","B"];
-    const size=(j,q)=>names[j]+" "+q.toLocaleString("zh-CN")+(kindBySide[j]==="etf"?" 份":" 股");
+    const kindBySide=seriesAssets.map(asset=>asset.kind);
     nextTradePlans(f,tick,kindBySide).forEach((plan,seller)=>{
-     set(seller===0?"next-trade-a":"next-trade-b",plan.reason?"不交易 · "+plan.reason:
-      "卖 "+size(seller,plan.sold)+" · 买 "+size(1-seller,plan.bought));
+     const reason=$("plan-"+seller+"-reason");
+     reason.hidden=!plan.reason;
+     reason.textContent=plan.reason?"不交易 · "+plan.reason:"";
+     for(let side=0;side<2;side++){
+      const id="plan-"+seller+"-"+side;
+      $(id+"-cell").hidden=!!plan.reason;
+      if(plan.reason)continue;
+      const selling=side===seller,qty=selling?plan.sold:plan.bought;
+      set(id+"-qty",(selling?"−":"+")+qty.toLocaleString("zh-CN"));
+      $(id+"-qty").dataset.sign=selling?"down":"up";
+      set(id+"-unit",kindBySide[side]==="etf"?" 份":" 股");
+     }
     });
     set("account-daily-return",dailyReturn===null?"—":fmt(dailyReturn)+"%");
     $("account-daily-return").dataset.sign=dailyReturn>0?"up":dailyReturn<0?"down":"flat";
