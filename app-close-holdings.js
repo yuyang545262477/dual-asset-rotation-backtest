@@ -690,7 +690,6 @@ if(typeof document!=="undefined"){
  });
  const choiceA=$("asset-choice-a"),choiceB=$("asset-choice-b");
  function changePair(){
-  const threshold=current?activeThreshold:undefined;
   if(!selectMarket(choiceA.value,choiceB.value))return;
   set("stock-view-a",market.codes[0]+" "+market.names[0]);
   set("stock-view-b",market.codes[1]+" "+market.names[1]);
@@ -725,7 +724,7 @@ if(typeof document!=="undefined"){
   set("tick-text","A 每档 "+tickText(0)+"，B 每档 "+tickText(1)+"。");
   $("etf-sources").hidden=!market.codes.some(c=>c==="588170"||c==="515880");
   $("original-sources").hidden=!market.codes.some(c=>c==="159509"||c==="600900");
-  setMode(mode,threshold);
+  setMode(mode);
   setView("net");
  }
  choiceA.addEventListener("change",changePair);
