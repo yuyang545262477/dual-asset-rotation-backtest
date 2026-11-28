@@ -199,9 +199,11 @@ function nextTradePlans(frame,priceTicks,kinds,threshold,codes,nextDate){
   const quotes=closes.slice(),step=priceTicks[seller];
   // Buy leg: unchanged reference price, plus one tick for its modeled ask.
   const ask=closes.map((p,i)=>p+priceTicks[i]);
-  const required=closes[seller]*(ask[buyer]/closes[buyer]+threshold+1e-12);
+  // Preview only: 588170 needs twice the configured spread when it is the moving leg.
+  const previewThreshold=codes[seller]==="588170"?threshold*2:threshold;
+  const required=closes[seller]*(ask[buyer]/closes[buyer]+previewThreshold+1e-12);
   let sellBid=(Math.floor(required/step)+1)*step;
-  if(!(sellBid/closes[seller]-ask[buyer]/closes[buyer]>threshold+1e-12))sellBid+=step;
+  if(!(sellBid/closes[seller]-ask[buyer]/closes[buyer]>previewThreshold+1e-12))sellBid+=step;
   // Sell leg uses bid; its reference price is one tick higher.
   quotes[seller]=sellBid+step;
   const upperPct=planUpperPct[codes[seller]];
