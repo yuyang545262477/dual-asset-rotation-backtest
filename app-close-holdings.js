@@ -271,14 +271,25 @@ if(typeof document!=="undefined"){
   const key=monthlyChoice.value,amountKey=key+"Pnl";
   const byMonth=new Map(monthlyMonths.map(m=>[m.month,m]));
   const years=[...new Set(monthlyMonths.map(m=>m.month.slice(0,4)))].reverse();
-  monthlyHost.innerHTML=years.map(year=>'<section class="month-year"><h3>'+year+' 年</h3><ul class="month-grid">'+
+  const signedMoney=value=>(value>.005?"+":value<-.005?"−":"")+money(Math.abs(value));
+  monthlyHost.innerHTML=years.map(year=>{
+   let multiplier=1,annualPnl=0;
+   for(const month of monthlyMonths){
+    if(!month.month.startsWith(year))continue;
+    multiplier*=1+month[key];
+    annualPnl+=month[amountKey];
+   }
+   const annualRate=multiplier-1,sign=annualRate>1e-10?"up":annualRate< -1e-10?"down":"flat";
+   return '<section class="month-year"><h3>'+year+' 年 <span class="year-pnl" data-sign="'+sign+'">'+pct(annualRate)+
+    (monthlyHasCash?' ('+signedMoney(annualPnl)+')':'')+'</span></h3><ul class="month-grid">'+
    Array.from({length:12},(_,i)=>{
     const n=i+1,m=byMonth.get(year+"-"+String(n).padStart(2,"0"));
     if(!m)return '<li class="month-tile month-empty"><span>'+n+' 月</span><span aria-label="无数据">—</span></li>';
     const rate=m[key],value=m[amountKey],sign=rate>1e-10?"up":rate< -1e-10?"down":"flat";
     return '<li class="month-tile" data-sign="'+sign+'"><span>'+n+' 月</span><strong>'+pct(rate)+'</strong>'+
-     (monthlyHasCash?'<small>'+(value>.005?"+":value<-.005?"−":"")+money(Math.abs(value))+'</small>':'')+'</li>';
-   }).join("")+"</ul></section>").join("")||"暂无月度数据";
+     (monthlyHasCash?'<small>'+signedMoney(value)+'</small>':'')+'</li>';
+   }).join("")+"</ul></section>";
+  }).join("")||"暂无月度数据";
  }
  function renderMonths(frames,principal,hasCash){
   monthlyMonths=monthlyPerformance(frames,principal);

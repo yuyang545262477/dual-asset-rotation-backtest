@@ -74,3 +74,9 @@ header .brand,main.shell,footer.shell{width:calc(100% - 36px);max-width:1800px}.
  .day-trade-quantity,.day-trade-cost{display:block}
  .day-trade-separator{display:none}
 }
+
+.month-year h3 .year-pnl{display:inline-block;margin-inline-start:.4em;font-variant-numeric:tabular-nums}
+.year-pnl[data-sign=up]{color:#ad2432}
+.year-pnl[data-sign=down]{color:#0d6c4c}
+:where(:root[data-theme="dark"]) .year-pnl[data-sign=up]{color:#fd9ca8}
+:where(:root[data-theme="dark"]) .year-pnl[data-sign=down]{color:#7addb3}

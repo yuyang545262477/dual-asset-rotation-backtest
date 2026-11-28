@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="zh-Hans"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="双资产历史轮动策略模拟。"><title>双资产轮动回测</title><script src="chart-theme.js?v=theme-choice"></script><link rel="stylesheet" href="style-free-pair.css?v=stable-readout"><link rel="stylesheet" href="live-snapshot.css"><script src="vendor/lightweight-charts.js" defer></script><script src="candles.js" defer></script><script src="prices.js" defer></script><script src="pair-588170-515880.js" defer></script><script src="history-515880.js" defer></script><script src="app-close-holdings.js?v=cash-change" defer></script></head>
+<!DOCTYPE html><html lang="zh-Hans"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="description" content="双资产历史轮动策略模拟。"><title>双资产轮动回测</title><script src="chart-theme.js?v=theme-choice"></script><link rel="stylesheet" href="style-free-pair.css?v=yearly-pnl"><link rel="stylesheet" href="live-snapshot.css"><script src="vendor/lightweight-charts.js" defer></script><script src="candles.js" defer></script><script src="prices.js" defer></script><script src="pair-588170-515880.js" defer></script><script src="history-515880.js" defer></script><script src="app-close-holdings.js?v=yearly-pnl" defer></script></head>
 <body><header><div class="shell brand"><span class="logo" aria-hidden="true">⇄</span><div class="brand-copy"><h1>双资产轮动回测</h1><p class="period" id="period">800 个交易日 · 历史模拟</p></div><label class="theme-choice">主题 <select id="theme-choice" aria-label="主题"><option value="system">跟随系统</option><option value="light">浅色</option><option value="dark">深色</option></select></label></div></header>
 <nav class="shell workspace-tabs" aria-label="双资工作区"><a href="./" aria-current="page">策略回测</a><a href="live.html">真实情况</a></nav>
 <main class="shell">
@@ -41,8 +41,8 @@
 <div class="scroll"><table aria-label="复利推演"><thead><tr><th scope="col">年数</th><th scope="col">轮动</th><th scope="col">持有</th></tr></thead><tbody id="projections"></tbody></table></div></div></section>
 </div>
 <section class="panel table-panel monthly-panel" aria-labelledby="monthly-heading">
- <div class="section-top"><h2 id="monthly-heading">月度盈亏日历</h2><label class="monthly-control">查看 <select id="monthly-series"><option value="strategy">轮动</option><option value="hold">持有不动</option></select></label></div>
- <p class="muted">每月与上月最后一个交易日比较，首月与起始本金比较。首月和末月按样本内交易日计算。</p>
+ <div class="section-top"><h2 id="monthly-heading">盈亏日历</h2><label class="monthly-control">查看 <select id="monthly-series"><option value="strategy">轮动</option><option value="hold">持有不动</option></select></label></div>
+ <p class="muted">每月与上月最后一个交易日比较，首月与起始本金比较。年度收益按当年样本计算。</p>
  <div id="monthly-calendar" aria-label="按年分组的月度盈亏" aria-live="polite"></div>
 </section>
 </div></section>
