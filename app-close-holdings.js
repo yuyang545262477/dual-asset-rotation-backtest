@@ -426,35 +426,34 @@ if(typeof document!=="undefined"){
   else showData(cursorIndex===null?undefined:rows[cursorIndex][0]);
  }
  gapToggle.addEventListener("click",()=>toggleGap(!gapVisible));
- let previewContext=null;
- const buyerMoveInput=$("plan-buyer-move");
- function paintNextPlan(){
-  if(!previewContext)return;
-  const {frame,kinds,nextDate}=previewContext;
-  const input=buyerMoveInput.valueAsNumber;
-  const rangeText=(lo,hi,format)=>format(lo)===format(hi)?format(lo):format(lo)+" ～ "+format(hi);
-  const gapFmt=x=>(x*100).toFixed(2)+"%";
+ function paintNextPlan(frame,kinds,nextDate){
   const qtyFmt=x=>x.toLocaleString("zh-CN");
-  const sign=x=>x>0?"up":x<0?"down":"flat";
-  const rangeMove=(lo,hi)=>'<small data-sign="'+(sign(lo)===sign(hi)?sign(lo):"flat")+'">'+rangeText(lo,hi,pct)+'</small>';
-  set("plan-threshold","触发阈值 "+activeThreshold+"%");
-  $("plan-results").innerHTML=nextTradePlans(frame,tick,kinds,activeThreshold/100,market.codes,nextDate,Number.isFinite(input)?input/100:0).map((group,seller)=>{
-   const direction=seller===0?"A → B":"B → A";
-   if(group.reason)return '<div class="plan-row"><span>'+direction+'</span><span class="plan-off">'+group.reason+'</span></div>';
-   return group.gaps.map((plan,i)=>{
-    const label='<span>'+(!i?direction:"")+'</span>',spread='<span class="plan-spread">'+rangeText(plan.spreadMin,plan.spreadMax,gapFmt)+'</span>';
-    if(plan.reason)return '<div class="plan-row">'+label+'<span class="plan-off">'+plan.reason+'</span>'+spread+'</div>';
+  // Place the displayed strict boundary between two adjacent executable spreads.
+  const boundary=(last,next)=>{
+   const lo=last*100,hi=next*100;
+   for(let d=2;d<=10;d++){
+    const scale=10**d,shown=Math.ceil((lo-1e-11)*scale)/scale;
+    if(shown>=lo-1e-11&&shown<hi)return shown.toFixed(d)+"%";
+   }
+   return lo.toFixed(10)+"%";
+  };
+  $("plan-results").innerHTML=nextTradePlans(frame,tick,kinds,activeThreshold/100,market.codes,nextDate).map((group,seller)=>{
+   const direction='<strong class="plan-direction">'+(seller===0?"A → B":"B → A")+'</strong>';
+   if(group.reason)return '<div class="plan-row">'+direction+group.reason+'</div>';
+   const stages=group.gaps.map((plan,i)=>{
+    const cutoff=i?boundary(group.gaps[i-1].spreadMax,plan.spreadMin):activeThreshold+"%";
+    const label='<span class="plan-cutoff">&gt;'+cutoff+'：</span>';
+    if(plan.reason)return label+plan.reason;
     const cols=[0,1].map(side=>{
      const sell=side===seller,unit=kinds[side]==="etf"?" 份":" 股";
-     const quantity=sell?rangeText(plan.soldMin,plan.soldMax,x=>"−"+qtyFmt(x)):"+"+qtyFmt(plan.bought);
-     const move=sell?rangeMove(plan.sellMoveMin,plan.sellMoveMax):rangeMove(group.buyMove,group.buyMove);
-     return '<span>'+(side===0?"A ":"B ")+'<strong data-sign="'+(sell?"down":"up")+'">'+quantity+'</strong>'+unit+move+'</span>';
+     const quantity=sell?(plan.soldMin===plan.soldMax?"−"+qtyFmt(plan.soldMin):"−"+qtyFmt(plan.soldMin)+"～−"+qtyFmt(plan.soldMax)):"+"+qtyFmt(plan.bought);
+     return (side===0?"A ":"B ")+'<strong data-sign="'+(sell?"down":"up")+'">'+quantity+'</strong>'+unit;
     });
-    return '<div class="plan-row">'+label+cols.join("")+spread+'</div>';
-   }).join("");
+    return label+cols.join(" · ");
+   });
+   return '<div class="plan-row">'+direction+stages.join('<span class="plan-separator">；</span>')+'</div>';
   }).join("");
  }
- buyerMoveInput.addEventListener("input",paintNextPlan);
  function showData(time){
   if(view==="net"){
    const i=index.get(time)??defaultReadoutIndex(), f=current.frames[i], move=mode!=="ideal"?accountMoves[i]:dailyMoves[i];
@@ -497,8 +496,7 @@ if(typeof document!=="undefined"){
      set("account-close-"+key,key.toUpperCase()+"：持有 "+quantity.toLocaleString("zh-CN")+(etf?" 份":" 股")+" · 收盘价 ¥"+price.toFixed(etf?3:2)+" · 市值 "+money(marketValue));
     }
     set("account-close-cash","现金："+money(f.cash));
-    previewContext={frame:f,kinds:seriesAssets.map(asset=>asset.kind),nextDate:current.frames[i+1]?.date};
-    paintNextPlan();
+    paintNextPlan(f,seriesAssets.map(asset=>asset.kind),current.frames[i+1]?.date);
     set("account-daily-return",dailyReturn===null?"—":fmt(dailyReturn)+"%");
     $("account-daily-return").dataset.sign=dailyReturn>0?"up":dailyReturn<0?"down":"flat";
     $("account-daily-return").title=i>0?"策略总资产（含现金）相对上一交易日的变化":"样本首日无前一日总资产";
