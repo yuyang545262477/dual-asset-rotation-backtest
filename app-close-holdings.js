@@ -322,10 +322,22 @@ if(typeof document!=="undefined"){
    all.before(button);
   }
  }
- // Individual adjusted returns stay on the right net-value axis.
+ // Adjust all four OHLC prices by the same factor, keeping the original return baseline.
+ function normalizedCandles(bars,column){
+  const base=rows[0][column];
+  return bars.map(({time,open,high,low,close},i)=>{
+   const normalizedClose=rows[i][column]/base;
+   const factor=normalizedClose/close;
+   return {time,open:open*factor,high:high*factor,low:low*factor,close:normalizedClose};
+  });
+ }
+ const assetCandleColors=color=>({
+  upColor:"transparent",downColor:color+"66",
+  borderUpColor:color,borderDownColor:color,wickUpColor:color,wickDownColor:color
+ });
  const assets={
-  a:{color:palette.a,points:rows.map(([time,a])=>({time,value:a/rows[0][1]})),visible:false,series:null},
-  b:{color:palette.b,points:rows.map(([time,,b])=>({time,value:b/rows[0][2]})),visible:false,series:null}
+  a:{color:palette.a,candles:[],visible:false,series:null},
+  b:{color:palette.b,candles:[],visible:false,series:null}
  };
  const assetButtons=[...document.querySelectorAll("[data-asset-return]")];
  for(const button of assetButtons){
@@ -385,7 +397,7 @@ if(typeof document!=="undefined"){
    set("readout",f.date+" · 轮动 "+f.value.toFixed(3)+" · 持有 "+f.hold.toFixed(3)+" · 份数 "+f.n);
    if(gapVisible&&mode==="ideal")set("readout",f.date+" · 比持有 "+differenceRate+" · 份数 "+f.n);
    for(const [key,asset] of Object.entries(assets)){
-    if(asset.visible)set("asset-return-"+key," "+pct(asset.points[i].value-1));
+    if(asset.visible)set("asset-return-"+key," "+pct(asset.candles[i].close-1));
    }
    const event=eventByDate.get(f.date), status=$("daily-status");
    $("account-readout").hidden=mode==="ideal";
@@ -507,11 +519,12 @@ if(typeof document!=="undefined"){
    }
    gapZeroLine=gapSeries.createPriceLine({price:0,color:palette.zero,lineWidth:1,lineStyle:TV.LineStyle.Dashed,axisLabelVisible:false,title:""});
    for(const asset of Object.values(assets)){
-    asset.series=chart.addSeries(TV.LineSeries,{
-     color:asset.color,lineWidth:2,visible:asset.visible,
-     lastValueVisible:false,priceLineVisible:false
+    asset.series=chart.addSeries(TV.CandlestickSeries,{
+     ...assetCandleColors(asset.color),visible:asset.visible,
+     lastValueVisible:false,priceLineVisible:false,
+     priceFormat:{type:"price",precision:3,minMove:.001}
     });
-    asset.series.setData(asset.points);
+    asset.series.setData(asset.candles);
    }
    updateNet();
   }else{
@@ -788,7 +801,7 @@ if(typeof document!=="undefined"){
   chart?.clearCrosshairPosition();
   assetButtons.forEach((button,j)=>{
    const key=button.dataset.assetReturn;
-   assets[key].points=rows.map(row=>({time:row[0],value:row[j+1]/rows[0][j+1]}));
+   assets[key].candles=normalizedCandles(ohlc[key],j+1);
    set("asset-tip-"+key,market.names[j]+"（"+market.codes[j]+"）");
   });
   set("period",rows[0][0].replaceAll("-",".")+" 至 "+rows.at(-1)[0].replaceAll("-",".")+" · "+rows.length+" 个交易日");
@@ -814,7 +827,7 @@ if(typeof document!=="undefined"){
   for(const button of assetButtons){
    const key=button.dataset.assetReturn;
    assets[key].color=p[key];
-   assets[key].series?.applyOptions({color:p[key]});
+   assets[key].series?.applyOptions(assetCandleColors(p[key]));
    button.style.setProperty("--asset-color",p[key]);
   }
   renderTradeMarkers();
