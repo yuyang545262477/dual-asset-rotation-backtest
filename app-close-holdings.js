@@ -110,7 +110,7 @@ function rank(mode="ideal"){
  return [...winners.values()].sort((a,b)=>b.value-a.value||a.band-b.band).slice(0,5);
 }
 // 以厘记账；手续费和印花税四舍五入至分，过户费按截图示例截到分。费率按每十万成交额表示。
-const capitalByMode={account:100000,account20:20000};
+const capitalByMode={account100:1000000,account:100000,account20:20000};
 const feePolicy={brokerRate:30,minimumBrokerFee:5000,stockTransferRate:1,stockSellStampRate:50};
 function tradeFee(amount,kind,side){
  if(amount<=0)return 0;
