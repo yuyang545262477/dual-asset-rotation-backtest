@@ -181,6 +181,19 @@ function planAccountSwap({holdings,portions,cash,seller,bid,ask,kinds,sellable=h
  return {sold,bought,sellFee,buyFee,cashUsed,cashAfter:cash+gross-sellFee-cost-buyFee};
 }
 
+function nextTradePlans(frame,priceTicks,kinds){
+ const holdings=frame.closingPositions.map(p=>p.quantity);
+ const prices=frame.closingPositions.map(p=>Math.round(p.price*1000));
+ const cash=Math.round(frame.cash*1000),portions=frame.n?.split(":").map(Number);
+ if(frame.portionStatus||portions?.length!==2||!portions.every(n=>Number.isInteger(n)&&n>0)){
+  const reason=frame.portionStatus??"底仓拦截";
+  return [{reason},{reason}];
+ }
+ const bid=prices.map((price,i)=>price-priceTicks[i]);
+ const ask=prices.map((price,i)=>price+priceTicks[i]);
+ return [0,1].map(seller=>bid[seller]<=0?{reason:"暂无有效报价"}:planAccountSwap({holdings,portions,cash,seller,bid,ask,kinds}));
+}
+
 function simulateAccount(threshold, trade=true, capital=capitalByMode.account){
  const startCapital=capital*1000,kinds=seriesAssets.map(asset=>asset.kind);
  let cash=startCapital,totalFees=0,benchCash,peak=1,dd=0,signals=0,tr=0,prevYearV=1,prevYearH=1,units=null,anchor=null;
@@ -431,6 +444,12 @@ if(typeof document!=="undefined"){
      set("account-close-"+key,key.toUpperCase()+"：持有 "+quantity.toLocaleString("zh-CN")+(etf?" 份":" 股")+" · 收盘价 ¥"+price.toFixed(etf?3:2)+" · 市值 "+money(marketValue));
     }
     set("account-close-cash","现金："+money(f.cash));
+    const kindBySide=seriesAssets.map(asset=>asset.kind), names=["A","B"];
+    const size=(j,q)=>names[j]+" "+q.toLocaleString("zh-CN")+(kindBySide[j]==="etf"?" 份":" 股");
+    nextTradePlans(f,tick,kindBySide).forEach((plan,seller)=>{
+     set(seller===0?"next-trade-a":"next-trade-b",plan.reason?"不交易 · "+plan.reason:
+      "卖 "+size(seller,plan.sold)+" · 买 "+size(1-seller,plan.bought));
+    });
     set("account-daily-return",dailyReturn===null?"—":fmt(dailyReturn)+"%");
     $("account-daily-return").dataset.sign=dailyReturn>0?"up":dailyReturn<0?"down":"flat";
     $("account-daily-return").title=i>0?"策略总资产（含现金）相对上一交易日的变化":"样本首日无前一日总资产";
