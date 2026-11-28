@@ -264,48 +264,27 @@ if(typeof document!=="undefined"){
  const host=$("chart"), terminal=$("terminal"), full=$("full");
  const TV=globalThis.LightweightCharts, theme=globalThis.dualChartTheme;
  let palette=theme.palette();
- const monthlyHost=$("monthly-chart"), monthlyChoice=$("monthly-series");
- let monthlyChart,monthlyBars,monthlyMonths=[],monthlyByTime=new Map(),monthlySelected=null,monthlyHasCash=false;
- function showMonth(month){
-  if(!month){set("monthly-readout","—");return;}
-  const amount=value=>" ("+(value>0?"+":value<0?"−":"")+money(Math.abs(value))+")";
-  set("monthly-readout",month.month+" · 轮动 "+pct(month.strategy)+(monthlyHasCash?amount(month.strategyPnl):"")+
-    " · 持有不动 "+pct(month.hold)+(monthlyHasCash?amount(month.holdPnl):""));
- }
- function paintMonths(fit=false){
-  if(!monthlyBars)return;
-  const key=monthlyChoice.value;
-  monthlyBars.setData(monthlyMonths.map(m=>({time:m.time,value:m[key],
-   color:m[key]>1e-10?palette.up:m[key]<-1e-10?palette.down:palette.zero})));
-  if(fit)monthlyChart.timeScale().fitContent();
+ const monthlyHost=$("monthly-calendar"),monthlyChoice=$("monthly-series");
+ let monthlyMonths=[],monthlyHasCash=false;
+ function paintMonths(){
+  const key=monthlyChoice.value,amountKey=key+"Pnl";
+  const byMonth=new Map(monthlyMonths.map(m=>[m.month,m]));
+  const years=[...new Set(monthlyMonths.map(m=>m.month.slice(0,4)))].reverse();
+  monthlyHost.innerHTML=years.map(year=>'<section class="month-year"><h3>'+year+' 年</h3><ul class="month-grid">'+
+   Array.from({length:12},(_,i)=>{
+    const n=i+1,m=byMonth.get(year+"-"+String(n).padStart(2,"0"));
+    if(!m)return '<li class="month-tile month-empty"><span>'+n+' 月</span><span aria-label="无数据">—</span></li>';
+    const rate=m[key],value=m[amountKey],sign=rate>1e-10?"up":rate< -1e-10?"down":"flat";
+    return '<li class="month-tile" data-sign="'+sign+'"><span>'+n+' 月</span><strong>'+pct(rate)+'</strong>'+
+     (monthlyHasCash?'<small>'+(value>.005?"+":value<-.005?"−":"")+money(Math.abs(value))+'</small>':'')+'</li>';
+   }).join("")+"</ul></section>").join("")||"暂无月度数据";
  }
  function renderMonths(frames,principal,hasCash){
-  const months=monthlyPerformance(frames,principal);
-  const fit=months.length!==monthlyMonths.length||months[0]?.time!==monthlyMonths[0]?.time;
-  monthlyMonths=months;
-  monthlyByTime=new Map(months.map(m=>[m.time,m]));
+  monthlyMonths=monthlyPerformance(frames,principal);
   monthlyHasCash=hasCash;
-  monthlySelected=monthlyByTime.get(monthlySelected)?.time??months.at(-1)?.time;
-  showMonth(monthlyByTime.get(monthlySelected));
-  if(TV?.HistogramSeries&&!monthlyChart&&!$("results").hidden){
-   monthlyChart=TV.createChart(monthlyHost,{
-    autoSize:true,
-    rightPriceScale:{scaleMargins:{top:.12,bottom:.12}},
-    timeScale:{minBarSpacing:2,tickMarkFormatter:t=>typeof t==="string"?t.slice(0,7):null},
-    localization:{locale:"zh-CN",timeFormatter:t=>typeof t==="string"?t.slice(0,7):""}
-   });
-   monthlyBars=monthlyChart.addSeries(TV.HistogramSeries,{base:0,lastValueVisible:false,priceLineVisible:false,
-    priceFormat:{type:"custom",minMove:.0001,formatter:pct}});
-   monthlyBars.createPriceLine({price:0,color:palette.zero,lineWidth:1,lineStyle:TV.LineStyle.Solid,axisLabelVisible:false});
-   const pickMonth=e=>{if(monthlyByTime.has(e.time)){monthlySelected=e.time;showMonth(monthlyByTime.get(e.time));}};
-   monthlyChart.subscribeCrosshairMove(pickMonth);
-   monthlyChart.subscribeClick(pickMonth);
-   theme.watch(p=>{theme.apply(monthlyChart,TV,p);paintMonths();});
-   paintMonths(true);
-  }else paintMonths(fit);
+  paintMonths();
  }
- monthlyChoice.addEventListener("change",()=>paintMonths());
-
+ monthlyChoice.addEventListener("change",paintMonths);
  let ohlc,byDate,index;
  // Individual adjusted returns stay on the right net-value axis.
  const assets={
@@ -575,11 +554,6 @@ if(typeof document!=="undefined"){
    $(tab.getAttribute("aria-controls")).hidden=!active;
    if(active&&focus)tab.focus({preventScroll:true});
   });
-  if(detailTabs[index]?.getAttribute("aria-controls")==="results"&&current){
-   requestAnimationFrame(()=>{
-    if(!$("results").hidden)renderMonths(current.frames,capitalByMode[mode]??1,mode!=="ideal");
-   });
-  }
  }
  detailTabs.forEach((tab,i)=>{
   tab.addEventListener("click",()=>activateDetailTab(i));
