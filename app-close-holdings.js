@@ -364,9 +364,11 @@ if(typeof document!=="undefined"){
       const selling=j===event.x, quantity=selling?event.sold:event.bought;
       return (j===0?"A ":"B ")+(selling?"−":"+")+quantity.toLocaleString("zh-CN")+(kind==="etf"?" 份":" 股");
      });
-     set("account-day-trade-details",changes.join(" · ")+" · 成交金额：卖 "+money(event.sellAmount)+" / 买 "+money(event.buyAmount)+" · 手续费 "+money(event.tradeFee));
+     set("account-day-trade-details",changes.join(" · "));
+     set("account-day-trade-cost","成交金额：卖 "+money(event.sellAmount)+" / 买 "+money(event.buyAmount)+" · 手续费 "+money(event.tradeFee));
     }else{
      set("account-day-trade-details","");
+     set("account-day-trade-cost","");
     }
     for(const [j,{quantity,price,marketValue}] of f.closingPositions.entries()){
      const key=j===0?"a":"b", etf=seriesAssets[j].kind==="etf";
@@ -479,7 +481,10 @@ if(typeof document!=="undefined"){
  chart?.subscribeCrosshairMove(p=>{
   if(keyboardCursor)return;
   const time=typeof p.time==="string"?p.time:p.time?[p.time.year,String(p.time.month).padStart(2,"0"),String(p.time.day).padStart(2,"0")].join("-"):null;
-  if(time&&index.has(time)){cursorIndex=index.get(time);showData(time);}
+  if(time&&index.has(time)){
+   const nextIndex=index.get(time);
+   if(cursorIndex!==nextIndex){cursorIndex=nextIndex;showData(time);}
+  }
   else if(mainSeries&&!keyboardCursor&&cursorIndex===null){showData();}
  });
  host.addEventListener("pointermove",()=>{keyboardCursor=false;},{passive:true,capture:true});

@@ -60,3 +60,17 @@ header .brand,main.shell,footer.shell{width:calc(100% - 36px);max-width:1800px}.
 :where(:root[data-theme="dark"]) .month-tile[data-sign=down]>strong{color:#7addb3}@media(max-width:1320px){.month-grid{grid-template-columns:repeat(6,minmax(0,1fr))}}@media(max-width:620px){.month-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 
 .theme-choice{display:flex;align-items:center;gap:6px;margin-left:auto;font-size:.875rem;font-weight:500;color:var(--muted);white-space:nowrap}.theme-choice select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;min-height:34px;padding:4px 7px}.theme-choice select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+
+/* Hovering across dates must not resize the chart or relocate its range buttons. */
+#terminal:has(#account-day-trade) .terminal-info{display:grid;grid-template-columns:minmax(0,1fr) auto}
+#terminal:has(#account-day-trade) .daily-readout:not([hidden]){display:grid;grid-template-columns:repeat(4,max-content);justify-content:start}
+#account-day-trade{line-height:1.45;block-size:1.45em;white-space:nowrap;overflow-x:auto;scrollbar-width:none}
+@media(max-width:960px){
+ #terminal:has(#account-day-trade) .terminal-info{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:680px){
+ #terminal:has(#account-day-trade) .daily-readout:not([hidden]){grid-template-columns:repeat(2,max-content)}
+ #account-day-trade{block-size:2.9em}
+ .day-trade-quantity,.day-trade-cost{display:block}
+ .day-trade-separator{display:none}
+}
