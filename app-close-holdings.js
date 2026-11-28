@@ -209,12 +209,13 @@ function simulateAccount(threshold, trade=true, capital=capitalByMode.account){
      e.bottom=plan.reason==="底仓拦截";e.skipped=true;e.reason=plan.reason;
      if(e.bottom)block[x]++;
     }else{
+     const cashChange=(plan.cashAfter-cash)/1000;
      q[x]-=plan.sold;q[y]+=plan.bought;cash=plan.cashAfter;totalFees+=plan.sellFee+plan.buyFee;
      units[x]--;units[y]++;tr++;
      allocation=accountAllocation(q,p,cash,units,anchor);
      anchor=allocation.anchor;
      if(allocation.portions)units=allocation.portions;
-     Object.assign(e,{sold:plan.sold,bought:plan.bought,sellPrice:bid[x]/1000,buyPrice:ask[y]/1000,cashUsed:plan.cashUsed/1000,sellAmount:plan.sold*bid[x]/1000,buyAmount:plan.bought*ask[y]/1000,tradeFee:(plan.sellFee+plan.buyFee)/1000,n:units.join(":")});
+     Object.assign(e,{sold:plan.sold,bought:plan.bought,sellPrice:bid[x]/1000,buyPrice:ask[y]/1000,cashUsed:plan.cashUsed/1000,sellAmount:plan.sold*bid[x]/1000,buyAmount:plan.bought*ask[y]/1000,tradeFee:(plan.sellFee+plan.buyFee)/1000,cashChange,n:units.join(":")});
     }
     log.push(e);
    }
@@ -365,7 +366,8 @@ if(typeof document!=="undefined"){
       return (j===0?"A ":"B ")+(selling?"−":"+")+quantity.toLocaleString("zh-CN")+(kind==="etf"?" 份":" 股");
      });
      set("account-day-trade-details",changes.join(" · "));
-     set("account-day-trade-cost","成交金额：卖 "+money(event.sellAmount)+" / 买 "+money(event.buyAmount)+" · 手续费 "+money(event.tradeFee));
+     const cashSign=event.cashChange>0?"+":event.cashChange<0?"−":"";
+     set("account-day-trade-cost","成交金额：卖 "+money(event.sellAmount)+" / 买 "+money(event.buyAmount)+" · 手续费 "+money(event.tradeFee)+" · 现金 "+cashSign+money(Math.abs(event.cashChange)));
     }else{
      set("account-day-trade-details","");
      set("account-day-trade-cost","");
