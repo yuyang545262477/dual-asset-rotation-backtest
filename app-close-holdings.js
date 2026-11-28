@@ -287,7 +287,7 @@ if(typeof document!=="undefined"){
   monthlyHasCash=hasCash;
   monthlySelected=monthlyByTime.get(monthlySelected)?.time??months.at(-1)?.time;
   showMonth(monthlyByTime.get(monthlySelected));
-  if(TV?.HistogramSeries&&!monthlyChart&&$("results").open){
+  if(TV?.HistogramSeries&&!monthlyChart&&!$("results").hidden){
    monthlyChart=TV.createChart(monthlyHost,{
     autoSize:true,
     rightPriceScale:{scaleMargins:{top:.12,bottom:.12}},
@@ -305,11 +305,7 @@ if(typeof document!=="undefined"){
   }else paintMonths(fit);
  }
  monthlyChoice.addEventListener("change",()=>paintMonths());
- $("results").addEventListener("toggle",()=>{
-  if($("results").open&&current)requestAnimationFrame(()=>{
-   if($("results").open)renderMonths(current.frames,capitalByMode[mode]??1,mode!=="ideal");
-  });
- });
+
  let ohlc,byDate,index;
  // Individual adjusted returns stay on the right net-value axis.
  const assets={
@@ -576,12 +572,29 @@ if(typeof document!=="undefined"){
  });
  document.addEventListener("fullscreenchange",syncFull);
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&terminal.classList.contains("full-fallback"))closeFallback();});
- for(const btn of document.querySelectorAll("[data-panel]")){
-  const panel=$(btn.dataset.panel);
-  btn.setAttribute("aria-controls",panel.id);btn.setAttribute("aria-expanded","false");
-  panel.addEventListener("toggle",()=>btn.setAttribute("aria-expanded",String(panel.open)));
-  btn.addEventListener("click",()=>{panel.open=!panel.open;if(panel.open)panel.scrollIntoView({block:"start"});});
+ const detailTabs=[...document.querySelectorAll(".backtest-tabs [role=tab]")];
+ function activateDetailTab(index,focus=false){
+  detailTabs.forEach((tab,i)=>{
+   const active=i===index;
+   tab.setAttribute("aria-selected",String(active));
+   tab.tabIndex=active?0:-1;
+   $(tab.getAttribute("aria-controls")).hidden=!active;
+   if(active&&focus)tab.focus({preventScroll:true});
+  });
+  if(detailTabs[index]?.getAttribute("aria-controls")==="results"&&current){
+   requestAnimationFrame(()=>{
+    if(!$("results").hidden)renderMonths(current.frames,capitalByMode[mode]??1,mode!=="ideal");
+   });
+  }
  }
+ detailTabs.forEach((tab,i)=>{
+  tab.addEventListener("click",()=>activateDetailTab(i));
+  tab.addEventListener("keydown",e=>{
+   const size=detailTabs.length;
+   const next={ArrowRight:(i+1)%size,ArrowLeft:(i+size-1)%size,Home:0,End:size-1}[e.key];
+   if(next!==undefined){e.preventDefault();activateDetailTab(next,true);}
+  });
+ });
  const stockViews=$("stock-views"), stockLabel=$("stock-views-label");
  document.querySelectorAll("[data-view]").forEach(e=>e.addEventListener("click",()=>{
   const next=e.dataset.view;
